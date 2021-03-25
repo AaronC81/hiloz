@@ -24,6 +24,7 @@ pub enum Instruction {
     Return,
     Call,
     Halt,
+    Suspend(SuspensionMode),
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -48,10 +49,16 @@ impl InterpreterFrame {
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
+pub enum SuspensionMode {
+    Sleep(u64),
+}
+
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum InstructionExecutionResult {
     Ok,
     OkReturn,
     OkHalt,
+    OkSuspend(SuspensionMode),
     OkNewFrame(InterpreterFrame),
     Err(String),
 }
@@ -60,6 +67,14 @@ pub enum InstructionExecutionResult {
 pub enum FrameExecutionResult {
     Ok,
     OkHalt,
+    OkSuspend(SuspensionMode),
+    Err(String)
+}
+
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum InterpreterExecutionResult {
+    Halt,
+    Suspend(SuspensionMode),
     Err(String)
 }
 
@@ -105,7 +120,8 @@ impl InterpreterFrame {
                 }
             }
 
-            Instruction::Halt => InstructionExecutionResult::OkHalt
+            Instruction::Halt => InstructionExecutionResult::OkHalt,
+            Instruction::Suspend(mode) => InstructionExecutionResult::OkSuspend(mode.clone()),
         };
 
         if will_increment_ip {
@@ -116,12 +132,26 @@ impl InterpreterFrame {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Default)]
-pub struct InterpreterState {
-    pub frames: Vec<InterpreterFrame>,
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum InterpreterStatus {
+    Normal,
+    Suspended,
+    Halted,
 }
 
-impl InterpreterState {
+impl Default for InterpreterStatus {
+    fn default() -> Self {
+        InterpreterStatus::Normal
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Default)]
+pub struct Interpreter {
+    pub frames: Vec<InterpreterFrame>,
+    pub status: InterpreterStatus,
+}
+
+impl Interpreter {
     fn current_frame(&mut self) -> &mut InterpreterFrame {
         self.frames.last_mut().expect("no frames")
     }
@@ -131,6 +161,7 @@ impl InterpreterState {
         match result {
             InstructionExecutionResult::Ok => FrameExecutionResult::Ok,
             InstructionExecutionResult::OkHalt => FrameExecutionResult::OkHalt,
+            InstructionExecutionResult::OkSuspend(mode) => FrameExecutionResult::OkSuspend(mode),
             InstructionExecutionResult::OkReturn => {
                 if self.current_frame().stack.is_empty() {
                     return FrameExecutionResult::Err(
@@ -157,13 +188,23 @@ impl InterpreterState {
         }
     }
 
-    pub fn execute_until_halt(&mut self) {
+    pub fn execute_until_halt(&mut self) -> InterpreterExecutionResult {
         loop {
             match self.execute_one_instruction() {
                 FrameExecutionResult::Ok => (),
-                FrameExecutionResult::OkHalt => break,
-                FrameExecutionResult::Err(s) => panic!(s),
+                FrameExecutionResult::OkSuspend(mode) => {
+                    self.status = InterpreterStatus::Suspended;
+                    return InterpreterExecutionResult::Suspend(mode)
+                }
+                FrameExecutionResult::OkHalt => {
+                    self.status = InterpreterStatus::Halted;
+                    return InterpreterExecutionResult::Halt
+                },
+                FrameExecutionResult::Err(s) => {
+                    self.status = InterpreterStatus::Halted;
+                    return InterpreterExecutionResult::Err(s)
+                },
             }
-        } 
+        }
     }
 }

@@ -62,10 +62,10 @@ fn it_can_return() {
         ]
     });
 
-    let mut state = InterpreterState::default();
+    let mut state = Interpreter::default();
     state.frames.push(InterpreterFrame::new(function));
 
-    state.execute_until_halt();
+    assert_eq!(state.execute_until_halt(), InterpreterExecutionResult::Halt);
 
     assert_eq!(state.frames.len(), 1);
     assert_eq!(state.frames[0].stack, vec![Object::Integer(4), Object::Integer(3)]);
