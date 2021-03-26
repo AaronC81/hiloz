@@ -191,7 +191,10 @@ impl Model {
                     time_remaining: item.time_remaining - queue_step_time,
                     ..item.clone()
                 })
-                .collect::<BinaryHeap<_>>()
+                .collect::<BinaryHeap<_>>();
+                
+            // Advance time elapsed
+            self.time_elapsed += queue_step_time;
         }
 
         // Execute all scripts, collecting component modifications

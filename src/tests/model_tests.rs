@@ -101,3 +101,68 @@ fn it_can_read_its_pin_state() {
         Object::LogicValue(Value::High),
     ]);
 }
+
+#[test]
+fn it_can_be_suspended_for_a_time_delay() {
+    let mut model = create_model(vec![vec![
+        Instruction::Push(Object::Integer(1)),
+        Instruction::Suspend(SuspensionMode::Sleep(1000)),
+
+        Instruction::Push(Object::Integer(2)),
+        Instruction::Suspend(SuspensionMode::Sleep(2000)),
+
+        Instruction::Push(Object::Integer(3)),
+        Instruction::Suspend(SuspensionMode::Sleep(3000)),
+
+        Instruction::Push(Object::Integer(4)),
+        Instruction::Suspend(SuspensionMode::Sleep(0)),
+
+        Instruction::Halt,
+    ]]);
+
+    assert!(model.interpreters[0].can_run());
+    model.step();
+    assert_eq!(model.suspended_timing_queue.len(), 1);
+    assert_eq!(model.time_elapsed, 0);
+    assert_eq!(model.interpreters[0].frames[0].stack, vec![
+        Object::Integer(1),
+    ]);
+
+    model.step();
+    assert_eq!(model.suspended_timing_queue.len(), 1);
+    assert_eq!(model.time_elapsed, 1000);
+    assert_eq!(model.interpreters[0].frames[0].stack, vec![
+        Object::Integer(1),
+        Object::Integer(2),
+    ]);
+    
+    model.step();
+    assert_eq!(model.suspended_timing_queue.len(), 1);
+    assert_eq!(model.time_elapsed, 3000);
+    assert_eq!(model.interpreters[0].frames[0].stack, vec![
+        Object::Integer(1),
+        Object::Integer(2),
+        Object::Integer(3),
+    ]);
+
+    model.step();
+    assert_eq!(model.suspended_timing_queue.len(), 1);
+    assert_eq!(model.time_elapsed, 6000);
+    assert_eq!(model.interpreters[0].frames[0].stack, vec![
+        Object::Integer(1),
+        Object::Integer(2),
+        Object::Integer(3),
+        Object::Integer(4),
+    ]);
+
+    model.step();
+    assert_eq!(model.suspended_timing_queue.len(), 0);
+    assert_eq!(model.time_elapsed, 6000);
+    assert_eq!(model.interpreters[0].frames[0].stack, vec![
+        Object::Integer(1),
+        Object::Integer(2),
+        Object::Integer(3),
+        Object::Integer(4),
+    ]);
+    assert_eq!(model.interpreters[0].status, InterpreterStatus::Halted);
+}
