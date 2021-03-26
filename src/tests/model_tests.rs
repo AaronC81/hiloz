@@ -166,3 +166,63 @@ fn it_can_be_suspended_for_a_time_delay() {
     ]);
     assert_eq!(model.interpreters[0].status, InterpreterStatus::Halted);
 }
+
+#[test]
+fn it_can_resume_multiple_interpreters_after_time_delay() {
+    let mut model = create_model(vec![
+        vec![
+            Instruction::Push(Object::Integer(1)),
+            Instruction::Suspend(SuspensionMode::Sleep(1000)),
+
+            Instruction::Push(Object::Integer(2)),
+            Instruction::Suspend(SuspensionMode::Sleep(2000)),
+
+            Instruction::Push(Object::Integer(3)),
+            Instruction::Halt,
+        ],
+        vec![
+            Instruction::Push(Object::Integer(1)),
+            Instruction::Suspend(SuspensionMode::Sleep(3000)),
+
+            Instruction::Push(Object::Integer(2)),
+            Instruction::Halt,
+        ],
+    ]);
+
+    assert!(model.interpreters[0].can_run());
+    model.step();
+    assert_eq!(model.suspended_timing_queue.len(), 2);
+    assert_eq!(model.time_elapsed, 0);
+    assert_eq!(model.interpreters[0].frames[0].stack, vec![
+        Object::Integer(1),
+    ]);
+    assert_eq!(model.interpreters[1].frames[0].stack, vec![
+        Object::Integer(1),
+    ]);
+
+    model.step();
+    assert_eq!(model.suspended_timing_queue.len(), 2);
+    assert_eq!(model.time_elapsed, 1000);
+    assert_eq!(model.interpreters[0].frames[0].stack, vec![
+        Object::Integer(1),
+        Object::Integer(2),
+    ]);
+    assert_eq!(model.interpreters[1].frames[0].stack, vec![
+        Object::Integer(1),
+    ]);
+
+    model.step();
+    assert_eq!(model.suspended_timing_queue.len(), 0);
+    assert_eq!(model.time_elapsed, 3000);
+    assert_eq!(model.interpreters[0].frames[0].stack, vec![
+        Object::Integer(1),
+        Object::Integer(2),
+        Object::Integer(3),
+    ]);
+    assert_eq!(model.interpreters[1].frames[0].stack, vec![
+        Object::Integer(1),
+        Object::Integer(2),
+    ]);
+    assert_eq!(model.interpreters[0].status, InterpreterStatus::Halted);
+    assert_eq!(model.interpreters[1].status, InterpreterStatus::Halted);
+}
