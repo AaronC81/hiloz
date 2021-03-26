@@ -4,57 +4,64 @@ use crate::logic::*;
 
 use std::sync::Arc;
 
-fn create_indicator_model(script: Vec<Instruction>) -> Model {
-    let indicator_pin_in = Arc::new(PinDefinition { name: "in".into() });
-    let indicator_script = Arc::new(Function {
-        body: script,
-        parameters: vec![],
-    });
-    let indicator_def = Arc::new(ComponentDefinition {
-        constructor: None,
-        functions: vec![],
-        pins: vec![indicator_pin_in.clone()],
-        script: indicator_script.clone(),
-        variables: vec![],
-    });
+fn create_model(scripts: Vec<Vec<Instruction>>) -> Model {
+    let functions = scripts.into_iter()
+        .map(|body| Arc::new(Function {
+            body,
+            parameters: vec![],
+        }))
+        .collect::<Vec<_>>();
 
-    let indicator = Component {
-        definition: indicator_def.clone(),
-        constructor_arguments: vec![],
-        pins: vec![
-            Pin {
-                definition: indicator_pin_in,
-                pull: Value::Unknown,
-                value: Value::Unknown,
-            }
-        ],
-        variables: vec![],
-    };
+    let mut component_definitions = vec![];
+    for function in &functions {
+        let pin = Arc::new(PinDefinition { name: "pin".into() });
+        component_definitions.push(Arc::new(ComponentDefinition {
+            constructor: None,
+            functions: vec![],
+            pins: vec![pin.clone()],
+            script: function.clone(),
+            variables: vec![],
+        }))
+    }
+
+    let mut components = vec![];
+    for def in &component_definitions {
+        components.push(Component {
+            definition: def.clone(),
+            constructor_arguments: vec![],
+            pins: vec![
+                Pin {
+                    definition: def.pins[0].clone(),
+                    pull: Value::Unknown,
+                    value: Value::Unknown,
+                }
+            ],
+            variables: vec![],
+        });
+    }
     
     Model {
-        component_definitions: vec![indicator_def],
-        components: vec![indicator],
+        component_definitions,
+        components,
         connections: vec![],
-        interpreters: vec![
+        interpreters: functions.into_iter().map(|func|
             Interpreter {
-                frames: vec![
-                    InterpreterFrame::new(indicator_script)
-                ],
+                frames: vec![InterpreterFrame::new(func)],
                 status: InterpreterStatus::Normal,
             }
-        ]
+        ).collect()
     }
 }
 
 #[test]
 fn it_can_take_a_step_and_be_modified() {
-    let mut model = create_indicator_model(vec![
+    let mut model = create_model(vec![vec![
         Instruction::Push(Object::LogicValue(Value::High)),
         Instruction::Push(Object::Integer(0)),
         Instruction::Push(Object::Integer(0)),
         Instruction::ModifyComponentPin,
         Instruction::Halt,
-    ]);
+    ]]);
 
     assert_eq!(model.components[0].pins[0].value, Value::Unknown);
     model.step();
@@ -63,7 +70,7 @@ fn it_can_take_a_step_and_be_modified() {
 
 #[test]
 fn it_can_read_its_pin_state() {
-    let mut model = create_indicator_model(vec![
+    let mut model = create_model(vec![vec![
         // Read pin, should be X
         Instruction::Push(Object::Integer(0)),
         Instruction::Push(Object::Integer(0)),
@@ -81,7 +88,7 @@ fn it_can_read_its_pin_state() {
         Instruction::ReadComponentPin,
 
         Instruction::Halt,
-    ]);
+    ]]);
 
     assert_eq!(model.components[0].pins[0].value, Value::Unknown);
     model.step();
