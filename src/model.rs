@@ -27,27 +27,6 @@ pub struct Connection {
     pins: Vec<PinConnection>,
 }
 
-impl Connection {
-    fn overall_pull(&self, model: &Model) -> Option<logic::Value> {
-        let mut pull_set = HashSet::new();
-
-        for conn in self.pins.iter() {
-            let this_pull = model.components[conn.component_idx].pins[conn.pin_idx].pull;
-            if this_pull != logic::Value::Unknown {
-                pull_set.insert(this_pull);
-            }
-        }
-
-        if pull_set.is_empty() {
-            Some(logic::Value::Unknown)
-        } else if pull_set.len() == 1 {
-            pull_set.into_iter().next()
-        } else {
-            None
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct VariableDefinition {
     pub name: String,
@@ -136,6 +115,7 @@ impl ComponentStateModificationDescription {
 #[derive(Debug, Clone, Default)]
 pub struct ComponentIntermediateState {
     pub components: Vec<Component>,
+    pub connections: Vec<Connection>,
     modifications: Vec<ComponentStateModification>,
 }
 
@@ -164,10 +144,62 @@ impl Model {
             all_modifications.append(&mut interpreter_state.modifications);
         }
 
-
         // Apply modifications to main component list
         for modification in all_modifications {
             modification.apply(&mut self.components);
         }
     }
+}
+
+trait ConnectedComponents {
+    fn components(&self) -> Vec<Component>;
+    fn connections(&self) -> Vec<Connection>;
+
+    fn connection_value(&self, connection: &Connection) -> Option<logic::Value> {
+        let mut value_set = HashSet::new();
+
+        for conn in connection.pins.iter() {
+            let this_value = self.components()[conn.component_idx].pins[conn.pin_idx].value;
+            if this_value != logic::Value::Unknown {
+                value_set.insert(this_value);
+            }
+        }
+
+        if value_set.is_empty() {
+            self.connection_pull(connection)
+        } else if value_set.len() == 1 {
+            value_set.into_iter().next()
+        } else {
+            None
+        }
+    }
+
+    fn connection_pull(&self, connection: &Connection) -> Option<logic::Value> {
+        let mut pull_set = HashSet::new();
+
+        for conn in connection.pins.iter() {
+            let this_pull = self.components()[conn.component_idx].pins[conn.pin_idx].pull;
+            if this_pull != logic::Value::Unknown {
+                pull_set.insert(this_pull);
+            }
+        }
+
+        if pull_set.is_empty() {
+            Some(logic::Value::Unknown)
+        } else if pull_set.len() == 1 {
+            pull_set.into_iter().next()
+        } else {
+            None
+        }
+    }
+}
+
+impl ConnectedComponents for Model {
+    fn components(&self) -> Vec<Component> { self.components.clone() }
+    fn connections(&self) -> Vec<Connection> { self.connections.clone() }
+}
+
+impl ConnectedComponents for ComponentIntermediateState {
+    fn components(&self) -> Vec<Component> { self.components.clone() }
+    fn connections(&self) -> Vec<Connection> { self.connections.clone() }
 }
