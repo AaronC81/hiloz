@@ -2,7 +2,7 @@ use crate::model::*;
 use crate::script_engine::*;
 use crate::logic::*;
 
-use std::sync::Arc;
+use std::{collections::BinaryHeap, sync::Arc};
 
 fn create_model(scripts: Vec<Vec<Instruction>>) -> Model {
     let functions = scripts.into_iter()
@@ -49,7 +49,10 @@ fn create_model(scripts: Vec<Vec<Instruction>>) -> Model {
                 frames: vec![InterpreterFrame::new(func)],
                 status: InterpreterStatus::Normal,
             }
-        ).collect()
+        ).collect(),
+
+        time_elapsed: 0,
+        suspended_timing_queue: BinaryHeap::new(),
     }
 }
 

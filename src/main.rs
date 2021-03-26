@@ -1,3 +1,5 @@
+#![feature(bindings_after_at)]
+
 mod logic;
 mod model;
 mod script_engine;

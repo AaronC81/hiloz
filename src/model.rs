@@ -1,7 +1,9 @@
+use binary_heap::PeekMut;
+
 use super::logic;
 use super::script_engine as se;
 
-use std::sync::Arc;
+use std::{cmp::Ordering, collections::{BinaryHeap, VecDeque, binary_heap}, sync::Arc};
 use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
@@ -56,12 +58,34 @@ pub struct Component {
     pub constructor_arguments: Vec<se::Object>,
 }
 
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub struct TimingQueueEntry {
+    interpreter_idx: usize,
+    time_remaining: u64,
+}
+
+impl PartialOrd for TimingQueueEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TimingQueueEntry {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.time_remaining.cmp(&other.time_remaining)
+            .then_with(|| other.interpreter_idx.cmp(&self.interpreter_idx))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Model {
     pub component_definitions: Vec<Arc<ComponentDefinition>>,
     pub components: Vec<Component>,
     pub connections: Vec<Connection>,
     pub interpreters: Vec<se::Interpreter>,
+
+    pub time_elapsed: u64,
+    pub suspended_timing_queue: BinaryHeap<TimingQueueEntry>,
 }
 
 // Scripts can change components, but we want to give the illusion that all
@@ -136,12 +160,66 @@ impl Model {
         };
         let mut all_modifications = vec![];
 
-        // Execute all scripts, collecting component modifications
-        for interpreter in self.interpreters.iter_mut() {
-            let mut interpreter_state = intermediate_state.clone();
-            interpreter.execute_until_done(&mut interpreter_state);
+        // Is there no interpreter which can run without unsuspension?
+        // (I think there should always be none, but check just in case)
+        if !self.interpreters.iter().any(|i| i.can_run()) {
+            // Unsuspend the soonest interpreters
+            let mut next_interpreters_to_unsuspend = vec![
+                self.suspended_timing_queue.pop().expect("no interpreters to unsuspend")
+            ];
 
+            // Are there any at the same time? If so, let's unsuspend those too
+            let queue_step_time = next_interpreters_to_unsuspend[0].time_remaining;
+            while let Some(entry) = self.suspended_timing_queue.peek_mut() {
+                if entry.time_remaining != queue_step_time {
+                    break;
+                }
+
+                next_interpreters_to_unsuspend.push(entry.clone());
+                binary_heap::PeekMut::pop(entry);
+            }
+
+            // Actually unsuspend them
+            for i in next_interpreters_to_unsuspend {
+                self.interpreters[i.interpreter_idx].resume();
+            }
+
+            // Advance other items in the timing queue
+            // TODO: This is probably _super_ expensive, we should do this better
+            self.suspended_timing_queue = self.suspended_timing_queue.iter()
+                .map(|item| TimingQueueEntry {
+                    time_remaining: item.time_remaining - queue_step_time,
+                    ..item.clone()
+                })
+                .collect::<BinaryHeap<_>>()
+        }
+
+        // Execute all scripts, collecting component modifications
+        for (i, interpreter) in self.interpreters.iter_mut().enumerate() {
+            // Only execute if the interpreter can run
+            if !interpreter.can_run() {
+                continue;
+            }
+
+            let mut interpreter_state = intermediate_state.clone();
+            let interpreter_result = interpreter.execute_until_done(&mut interpreter_state);
             all_modifications.append(&mut interpreter_state.modifications);
+
+            // If this interpreter suspended, add to the timing queue
+            match interpreter_result {
+                se::InterpreterExecutionResult::Suspend(mode) => {
+                    match mode {
+                        se::SuspensionMode::Sleep(time) => {
+                            self.suspended_timing_queue.push(TimingQueueEntry {
+                                interpreter_idx: i,
+                                time_remaining: time, 
+                            })
+                        }
+                    }
+                },
+                se::InterpreterExecutionResult::Halt => (),
+                se::InterpreterExecutionResult::Err(s) => panic!(s),
+            }
         }
 
         // Apply modifications to main component list

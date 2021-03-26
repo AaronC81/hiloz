@@ -216,6 +216,14 @@ impl Interpreter {
         self.frames.last_mut().expect("no frames")
     }
 
+    pub fn can_run(&self) -> bool {
+        self.status == InterpreterStatus::Normal
+    }
+
+    pub fn resume(&mut self) {
+        self.status = InterpreterStatus::Normal;
+    }
+
     pub fn execute_one_instruction(&mut self, state: &mut ComponentIntermediateState) -> FrameExecutionResult {
         let result = self.current_frame().execute_one_instruction(state);
         match result {
