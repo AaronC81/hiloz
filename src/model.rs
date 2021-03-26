@@ -72,7 +72,7 @@ impl PartialOrd for TimingQueueEntry {
 
 impl Ord for TimingQueueEntry {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.time_remaining.cmp(&other.time_remaining)
+        other.time_remaining.cmp(&self.time_remaining)
             .then_with(|| other.interpreter_idx.cmp(&self.interpreter_idx))
     }
 }
