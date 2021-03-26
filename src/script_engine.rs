@@ -1,5 +1,11 @@
 use super::logic;
-use super::model::{ComponentStateModification, ComponentIntermediateState, ComponentStateModificationDescription};
+use super::model::{
+    ComponentStateModification,
+    ComponentIntermediateState,
+    ComponentStateModificationDescription,
+    PinConnection,
+    ConnectedComponents,
+};
 
 use std::{borrow::Borrow, collections::HashMap, sync::Arc, usize};
 
@@ -32,6 +38,10 @@ pub enum Instruction {
     //   - Pin index, integer
     //   - New pin value, logic value
     ModifyComponentPin,
+
+    //   - Component index, integer
+    //   - Pin index, integer
+    ReadComponentPin,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -131,18 +141,9 @@ impl InterpreterFrame {
             Instruction::Suspend(mode) => InstructionExecutionResult::OkSuspend(mode.clone()),
 
             Instruction::ModifyComponentPin => {
-                let component_idx = match self.stack.pop() {
-                    Some(Object::Integer(i)) => i,
-                    _ => return InstructionExecutionResult::Err("expected integer for component index".into()),
-                };
-                let pin_idx = match self.stack.pop() {
-                    Some(Object::Integer(i)) => i,
-                    _ => return InstructionExecutionResult::Err("expected integer for pin index".into()),
-                };
-                let value = match self.stack.pop() {
-                    Some(Object::LogicValue(v)) => v,
-                    _ => return InstructionExecutionResult::Err("expected logic value for pin value".into()),
-                };
+                let component_idx = self.pop_integer(); 
+                let pin_idx = self.pop_integer(); 
+                let value = self.pop_logic_value();
 
                 state.modify(ComponentStateModification {
                     component_idx: component_idx as usize,
@@ -154,6 +155,19 @@ impl InterpreterFrame {
 
                 InstructionExecutionResult::Ok
             }
+
+            Instruction::ReadComponentPin => {
+                let component_idx = self.pop_integer(); 
+                let pin_idx = self.pop_integer();
+
+                let pin_value = state.pin_value(&PinConnection {
+                    component_idx: component_idx as usize,
+                    pin_idx: pin_idx as usize,
+                });
+                self.stack.push(Object::LogicValue(pin_value));
+
+                InstructionExecutionResult::Ok
+            }
         };
 
         if will_increment_ip {
@@ -161,6 +175,20 @@ impl InterpreterFrame {
         }
 
         result
+    }
+
+    fn pop_integer(&mut self) -> i64 {
+        match self.stack.pop() {
+            Some(Object::Integer(i)) => i,
+            _ => panic!("expected integer on stack"),
+        }
+    }
+
+    fn pop_logic_value(&mut self) -> logic::Value {
+        match self.stack.pop() {
+            Some(Object::LogicValue(v)) => v,
+            _ => panic!("expected logic value on stack"),
+        }
     }
 }
 

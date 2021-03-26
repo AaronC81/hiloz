@@ -18,8 +18,8 @@ pub struct Pin {
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct PinConnection {
-    component_idx: usize,
-    pin_idx: usize
+    pub component_idx: usize,
+    pub pin_idx: usize
 }
 
 #[derive(Debug, Clone)]
@@ -151,7 +151,7 @@ impl Model {
     }
 }
 
-trait ConnectedComponents {
+pub trait ConnectedComponents {
     fn components(&self) -> Vec<Component>;
     fn connections(&self) -> Vec<Connection>;
 
@@ -190,6 +190,20 @@ trait ConnectedComponents {
             pull_set.into_iter().next()
         } else {
             None
+        }
+    }
+
+    fn pin_connection(&self, pin_connection: &PinConnection) -> Option<usize> {
+        self.connections()
+            .iter()
+            .position(|conn| conn.pins.contains(pin_connection))
+    }
+
+    fn pin_value(&self, conn: &PinConnection) -> logic::Value {
+        if let Some(c) = self.pin_connection(conn) {
+            self.connection_value(&self.connections()[c]).expect("invalid value for connection")
+        } else {
+            self.components()[conn.component_idx].pins[conn.pin_idx].value
         }
     }
 }
