@@ -16,17 +16,23 @@ pub struct Pin {
     pub pull: logic::Value,
 }
 
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub struct PinConnection {
+    component_idx: usize,
+    pin_idx: usize
+}
+
 #[derive(Debug, Clone)]
 pub struct Connection {
-    pins: Vec<Arc<Pin>>,
+    pins: Vec<PinConnection>,
 }
 
 impl Connection {
-    fn overall_pull(&self) -> Option<logic::Value> {
+    fn overall_pull(&self, model: &Model) -> Option<logic::Value> {
         let mut pull_set = HashSet::new();
 
-        for pin in self.pins.iter() {
-            let this_pull = pin.pull;
+        for conn in self.pins.iter() {
+            let this_pull = model.components[conn.component_idx].pins[conn.pin_idx].pull;
             if this_pull != logic::Value::Unknown {
                 pull_set.insert(this_pull);
             }
