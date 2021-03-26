@@ -1,6 +1,7 @@
 use super::logic;
+use super::model::{ComponentIntermediateState};
 
-use std::{borrow::Borrow, collections::{HashMap, btree_set::Intersection}, sync::Arc};
+use std::{borrow::Borrow, collections::HashMap, sync::Arc, usize};
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Object {
@@ -79,7 +80,7 @@ pub enum InterpreterExecutionResult {
 }
 
 impl InterpreterFrame {
-    pub fn execute_one_instruction(&mut self) -> InstructionExecutionResult {
+    pub fn execute_one_instruction(&mut self, state: &mut ComponentIntermediateState) -> InstructionExecutionResult {
         let instruction = &(*self.function).body[self.ip];
         let mut will_increment_ip = true;
         
@@ -156,8 +157,8 @@ impl Interpreter {
         self.frames.last_mut().expect("no frames")
     }
 
-    pub fn execute_one_instruction(&mut self) -> FrameExecutionResult {
-        let result = self.current_frame().execute_one_instruction();
+    pub fn execute_one_instruction(&mut self, state: &mut ComponentIntermediateState) -> FrameExecutionResult {
+        let result = self.current_frame().execute_one_instruction(state);
         match result {
             InstructionExecutionResult::Ok => FrameExecutionResult::Ok,
             InstructionExecutionResult::OkHalt => FrameExecutionResult::OkHalt,
@@ -188,9 +189,9 @@ impl Interpreter {
         }
     }
 
-    pub fn execute_until_halt(&mut self) -> InterpreterExecutionResult {
+    pub fn execute_until_done(&mut self, state: &mut ComponentIntermediateState) -> InterpreterExecutionResult {
         loop {
-            match self.execute_one_instruction() {
+            match self.execute_one_instruction(state) {
                 FrameExecutionResult::Ok => (),
                 FrameExecutionResult::OkSuspend(mode) => {
                     self.status = InterpreterStatus::Suspended;
