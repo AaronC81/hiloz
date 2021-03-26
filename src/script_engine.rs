@@ -1,5 +1,5 @@
 use super::logic;
-use super::model::{ComponentIntermediateState};
+use super::model::{ComponentStateModification, ComponentIntermediateState, ComponentStateModificationDescription};
 
 use std::{borrow::Borrow, collections::HashMap, sync::Arc, usize};
 
@@ -26,6 +26,12 @@ pub enum Instruction {
     Call,
     Halt,
     Suspend(SuspensionMode),
+
+    // Requires the following on the stack (starting at the top):
+    //   - Component index, integer
+    //   - Pin index, integer
+    //   - New pin value, logic value
+    ModifyComponentPin,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -123,6 +129,31 @@ impl InterpreterFrame {
 
             Instruction::Halt => InstructionExecutionResult::OkHalt,
             Instruction::Suspend(mode) => InstructionExecutionResult::OkSuspend(mode.clone()),
+
+            Instruction::ModifyComponentPin => {
+                let component_idx = match self.stack.pop() {
+                    Some(Object::Integer(i)) => i,
+                    _ => return InstructionExecutionResult::Err("expected integer for component index".into()),
+                };
+                let pin_idx = match self.stack.pop() {
+                    Some(Object::Integer(i)) => i,
+                    _ => return InstructionExecutionResult::Err("expected integer for pin index".into()),
+                };
+                let value = match self.stack.pop() {
+                    Some(Object::LogicValue(v)) => v,
+                    _ => return InstructionExecutionResult::Err("expected logic value for pin value".into()),
+                };
+
+                state.modify(ComponentStateModification {
+                    component_idx: component_idx as usize,
+                    description: ComponentStateModificationDescription::Pin {
+                        idx: pin_idx as usize,
+                        value,
+                    },
+                });
+
+                InstructionExecutionResult::Ok
+            }
         };
 
         if will_increment_ip {

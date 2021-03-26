@@ -6,7 +6,7 @@ use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct PinDefinition {
-    name: String,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -55,29 +55,28 @@ pub struct Variable {
 
 #[derive(Debug, Clone)]
 pub struct ComponentDefinition {
-    pins: Vec<PinDefinition>,
-    variables: Vec<VariableDefinition>,
-    constructor: Option<se::Function>,
-    functions: Vec<se::Function>,
-    script: se::Function,
-    subcomponents: Box<Component>,
+    pub pins: Vec<Arc<PinDefinition>>,
+    pub variables: Vec<Arc<VariableDefinition>>,
+    pub constructor: Option<Arc<se::Function>>,
+    pub functions: Vec<Arc<se::Function>>,
+    pub script: Arc<se::Function>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Component {
-    definition: Arc<ComponentDefinition>,
-    pins: Vec<Pin>,
-    variables: Vec<Variable>,
+    pub definition: Arc<ComponentDefinition>,
+    pub pins: Vec<Pin>,
+    pub variables: Vec<Variable>,
 
-    constructor_arguments: Vec<se::Object>,
+    pub constructor_arguments: Vec<se::Object>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Model {
-    component_definitions: Vec<Arc<ComponentDefinition>>,
-    components: Vec<Component>,
-    connections: Vec<Connection>,
-    interpreters: Vec<se::Interpreter>,
+    pub component_definitions: Vec<Arc<ComponentDefinition>>,
+    pub components: Vec<Component>,
+    pub connections: Vec<Connection>,
+    pub interpreters: Vec<se::Interpreter>,
 }
 
 // Scripts can change components, but we want to give the illusion that all
@@ -93,8 +92,8 @@ pub struct Model {
 
 #[derive(Debug, Clone)]
 pub struct ComponentStateModification {
-    component_idx: usize,
-    description: ComponentStateModificationDescription,
+    pub component_idx: usize,
+    pub description: ComponentStateModificationDescription,
 }
 
 impl ComponentStateModification {
@@ -135,13 +134,15 @@ pub struct ComponentIntermediateState {
 }
 
 impl ComponentIntermediateState {
-    fn modify(&mut self, modification: ComponentStateModification) {
+    pub fn modify(&mut self, modification: ComponentStateModification) {
+        self.modifications.push(modification.clone());
+
         modification.description.apply(&mut self.components[modification.component_idx]);
     }
 }
 
 impl Model {
-    fn step(&mut self) {
+    pub fn step(&mut self) {
         // Make a copy of the current state of the component system
         let intermediate_state = ComponentIntermediateState {
             components: self.components.clone(),
@@ -156,6 +157,7 @@ impl Model {
 
             all_modifications.append(&mut interpreter_state.modifications);
         }
+
 
         // Apply modifications to main component list
         for modification in all_modifications {
