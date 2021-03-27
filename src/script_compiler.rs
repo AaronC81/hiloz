@@ -1,5 +1,3 @@
-use m::{Component, Model};
-
 use crate::model as m;
 use crate::script_engine as se;
 use crate::script_parser as sp;
@@ -18,7 +16,7 @@ impl<'a> CompilationContext<'a> {
         }
     }
 
-    fn component(&self) -> &Component {
+    fn component(&self) -> &m::Component {
         &self
             .top_context()
             .model
