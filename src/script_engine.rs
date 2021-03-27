@@ -31,9 +31,11 @@ pub enum Instruction {
     Return,
     Call,
     Halt,
-    Suspend(SuspensionMode),
-
+    
     // Requires the following on the stack (starting at the top):
+    //   - Suspension time
+    SuspendSleep,
+
     //   - Component index, integer
     //   - Pin index, integer
     //   - New pin value, logic value
@@ -138,7 +140,9 @@ impl InterpreterFrame {
             }
 
             Instruction::Halt => InstructionExecutionResult::OkHalt,
-            Instruction::Suspend(mode) => InstructionExecutionResult::OkSuspend(mode.clone()),
+            Instruction::SuspendSleep => InstructionExecutionResult::OkSuspend(
+                SuspensionMode::Sleep(self.pop_integer() as u64)
+            ),
 
             Instruction::ModifyComponentPin => {
                 let component_idx = self.pop_integer(); 

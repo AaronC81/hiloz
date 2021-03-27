@@ -106,16 +106,20 @@ fn it_can_read_its_pin_state() {
 fn it_can_be_suspended_for_a_time_delay() {
     let mut model = create_model(vec![vec![
         Instruction::Push(Object::Integer(1)),
-        Instruction::Suspend(SuspensionMode::Sleep(1000)),
+        Instruction::Push(Object::Integer(1000)),
+        Instruction::SuspendSleep,
 
         Instruction::Push(Object::Integer(2)),
-        Instruction::Suspend(SuspensionMode::Sleep(2000)),
+        Instruction::Push(Object::Integer(2000)),
+        Instruction::SuspendSleep,
 
         Instruction::Push(Object::Integer(3)),
-        Instruction::Suspend(SuspensionMode::Sleep(3000)),
+        Instruction::Push(Object::Integer(3000)),
+        Instruction::SuspendSleep,
 
         Instruction::Push(Object::Integer(4)),
-        Instruction::Suspend(SuspensionMode::Sleep(0)),
+        Instruction::Push(Object::Integer(0)),
+        Instruction::SuspendSleep,
 
         Instruction::Halt,
     ]]);
@@ -172,17 +176,20 @@ fn it_can_resume_multiple_interpreters_after_time_delay() {
     let mut model = create_model(vec![
         vec![
             Instruction::Push(Object::Integer(1)),
-            Instruction::Suspend(SuspensionMode::Sleep(1000)),
+            Instruction::Push(Object::Integer(1000)),
+            Instruction::SuspendSleep,
 
             Instruction::Push(Object::Integer(2)),
-            Instruction::Suspend(SuspensionMode::Sleep(2000)),
+            Instruction::Push(Object::Integer(2000)),
+            Instruction::SuspendSleep,
 
             Instruction::Push(Object::Integer(3)),
             Instruction::Halt,
         ],
         vec![
             Instruction::Push(Object::Integer(1)),
-            Instruction::Suspend(SuspensionMode::Sleep(3000)),
+            Instruction::Push(Object::Integer(3000)),
+            Instruction::SuspendSleep,
 
             Instruction::Push(Object::Integer(2)),
             Instruction::Halt,
