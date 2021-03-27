@@ -33,10 +33,11 @@ pub enum Node {
 use Node::*;
 use se::Object::*;
 
-fn space() -> Parser<u8, ()> { is_a(multispace).repeat(1..).discard() }
-fn semi() -> Parser<u8, ()> { (space() + sym(b';') + space()).discard() }
-fn lbrace() -> Parser<u8, ()> { (space() + sym(b'{') + space()).discard() }
-fn rbrace() -> Parser<u8, ()> { (space() + sym(b'}') + space()).discard() }
+fn space() -> Parser<u8, ()> { is_a(multispace).repeat(0..).discard() }
+fn must_space() -> Parser<u8, ()> { is_a(multispace).repeat(1..).discard().name("whitespace") }
+fn semi() -> Parser<u8, ()> { (space() + sym(b';') + space()).discard().name("semicolon") }
+fn lbrace() -> Parser<u8, ()> { (space() + sym(b'{') + space()).discard().name("left brace") }
+fn rbrace() -> Parser<u8, ()> { (space() + sym(b'}') + space()).discard().name("right brace") }
 
 pub fn raw_integer() -> Parser<u8, i64> {
     (sym(b'-').opt() + is_a(digit).repeat(1..))
@@ -51,7 +52,7 @@ pub fn integer() -> Parser<u8, Node> {
 
 pub fn raw_identifier() -> Parser<u8, String> {
     // TODO: reject keywords
-    ((is_a(alpha) | sym(b'_')) + (is_a(alpha) | is_a(digit) | sym(b'_')).repeat(1..))
+    ((is_a(alpha) | sym(b'_')) + (is_a(alpha) | is_a(digit) | sym(b'_')).repeat(0..))
         .collect()
         .convert(from_utf8)
         .map(Into::into)
@@ -62,22 +63,27 @@ pub fn identifier() -> Parser<u8, Node> {
 }
 
 pub fn pin_definition() -> Parser<u8, Node> {
-    (seq(b"pin") + space() + raw_identifier() + semi())
+    (seq(b"pin") + must_space() + raw_identifier() + semi())
         .map(|((_, id), _)| PinDefinition(id))
 }
 
 pub fn component_definition() -> Parser<u8, Node> {
     (
-        seq(b"define") + space() + seq(b"component") + space()
+        seq(b"define") + must_space() + seq(b"component") + must_space()
         + raw_identifier() + space()
-        + component_definition()
-    ).map(|(((_, name), _,), body)| ComponentDefinition {
-        name,
-        body: Box::new(body),
-    })
+        + component_definition_body()
+    )
+        .map(|(((_, name), _,), body)| ComponentDefinition {
+            name,
+            body: Box::new(body),
+        })
 }
 
 pub fn component_definition_body() -> Parser<u8, Node> {
-    // TODO
-    (lbrace() + rbrace()).map(|_| Node::Body(vec![]))
+    (
+        lbrace()
+        + (pin_definition()).repeat(0..)
+        + rbrace()
+    )
+        .map(|((_, defs), _)| Node::Body(defs))
 }
