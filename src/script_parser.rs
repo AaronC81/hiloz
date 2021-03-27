@@ -134,3 +134,10 @@ pub fn script_sleep_statement() -> Parser<u8, Node> {
     (seq(b"sleep") + space() + lparen() + space() + script_expression() + space() + rparen())
         .map(|(((_, e), _), _)| Sleep(Box::new(e)))
 }
+
+pub fn top_level() -> Parser<u8, Node> {
+    (space() + component_definition() + space())
+        .map(|((_, c), _)| c)
+        .repeat(0..)
+        .map(|x| Body(x)) 
+}

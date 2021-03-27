@@ -17,10 +17,11 @@ pub fn create_model(scripts: Vec<Vec<Instruction>>) -> Model {
     for function in &functions {
         let pin = Arc::new(PinDefinition { name: "pin".into() });
         component_definitions.push(Arc::new(ComponentDefinition {
+            name: "ExampleComponent".into(),
             constructor: None,
             functions: vec![],
             pins: vec![pin.clone()],
-            script: function.clone(),
+            script: Some(function.clone()),
             variables: vec![],
         }))
     }

@@ -6,12 +6,12 @@ use super::script_engine as se;
 use std::{cmp::Ordering, collections::{BinaryHeap, VecDeque, binary_heap}, sync::Arc};
 use std::collections::HashSet;
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct PinDefinition {
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Pin {
     pub definition: Arc<PinDefinition>,
     pub value: logic::Value,
@@ -24,29 +24,30 @@ pub struct PinConnection {
     pub pin_idx: usize
 }
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Connection {
     pins: Vec<PinConnection>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct VariableDefinition {
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Variable {
     pub definition: Arc<VariableDefinition>,
     pub value: se::Object,
 }
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct ComponentDefinition {
+    pub name: String,
     pub pins: Vec<Arc<PinDefinition>>,
     pub variables: Vec<Arc<VariableDefinition>>,
     pub constructor: Option<Arc<se::Function>>,
     pub functions: Vec<Arc<se::Function>>,
-    pub script: Arc<se::Function>,
+    pub script: Option<Arc<se::Function>>,
 }
 
 impl ComponentDefinition {
@@ -57,7 +58,7 @@ impl ComponentDefinition {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Component {
     pub definition: Arc<ComponentDefinition>,
     pub pins: Vec<Pin>,
@@ -95,6 +96,18 @@ pub struct Model {
     pub time_elapsed: u64,
     pub suspended_timing_queue: BinaryHeap<TimingQueueEntry>,
 }
+
+impl PartialEq for Model {
+    fn eq(&self, other: &Model) -> bool {
+        // TODO: Doesn't compare suspended_timing_queue!
+        self.component_definitions == other.component_definitions
+        && self.components == other.components
+        && self.connections == other.connections
+        && self.interpreters == other.interpreters
+        && self.time_elapsed == other.time_elapsed
+    }
+}
+impl Eq for Model {}
 
 // Scripts can change components, but we want to give the illusion that all
 // scripts execute simultaneously. We do it like this:
