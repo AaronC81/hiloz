@@ -46,10 +46,11 @@ pub fn create_model(scripts: Vec<Vec<Instruction>>) -> Model {
         component_definitions,
         components,
         connections: vec![],
-        interpreters: functions.into_iter().map(|func|
+        interpreters: functions.into_iter().enumerate().map(|(i, func)|
             Interpreter {
                 frames: vec![InterpreterFrame::new(func)],
                 status: InterpreterStatus::Normal,
+                component_idx: Some(i),
             }
         ).collect(),
 

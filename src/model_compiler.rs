@@ -38,7 +38,7 @@ fn compile_component_definition(
             let instructions = sc::compile_script(
                 script_body,
                 Some(model),
-                Some(component_idx), // FIXME
+                Some(component_definition),
             )?;
             component_definition.script = Some(Arc::new(se::Function {
                 body: instructions,

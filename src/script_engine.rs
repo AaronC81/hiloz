@@ -31,6 +31,7 @@ pub enum Instruction {
     Return,
     Call,
     Halt,
+    GetOwnComponentIdx,
     
     // Requires the following on the stack (starting at the top, i.e. pushed last):
     //   - Suspension time
@@ -139,6 +140,13 @@ impl InterpreterFrame {
                 }
             }
 
+            Instruction::GetOwnComponentIdx => {
+                self.stack.push(Object::Integer(
+                    state.current_component_idx.expect("not running in component") as i64
+                ));
+                InstructionExecutionResult::Ok
+            }
+
             Instruction::Halt => InstructionExecutionResult::OkHalt,
             Instruction::SuspendSleep => InstructionExecutionResult::OkSuspend(
                 SuspensionMode::Sleep(self.pop_integer() as u64)
@@ -213,6 +221,7 @@ impl Default for InterpreterStatus {
 pub struct Interpreter {
     pub frames: Vec<InterpreterFrame>,
     pub status: InterpreterStatus,
+    pub component_idx: Option<usize>,
 }
 
 impl Interpreter {

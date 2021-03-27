@@ -22,16 +22,16 @@ fn it_compiles_pin_assignments() {
         compile_script(&script_block().parse(b"{
             pin <- H;
             pin <- L;
-        }").unwrap(), Some(&model), Some(1)),
+        }").unwrap(), Some(&model), Some(&model.component_definitions[1])),
         Ok(vec![
             Instruction::Push(LogicValue(Value::High)),
             Instruction::Push(Integer(0)),
-            Instruction::Push(Integer(1)),
+            Instruction::GetOwnComponentIdx,
             Instruction::ModifyComponentPin,
 
             Instruction::Push(LogicValue(Value::Low)),
             Instruction::Push(Integer(0)),
-            Instruction::Push(Integer(1)),
+            Instruction::GetOwnComponentIdx,
             Instruction::ModifyComponentPin,
 
             Instruction::Halt
@@ -42,7 +42,7 @@ fn it_compiles_pin_assignments() {
     assert!(matches!(
         compile_script(&script_block().parse(b"{
             pin_that_does_not_exist <- H;
-        }").unwrap(), Some(&model), Some(1)),
+        }").unwrap(), Some(&model), Some(&model.component_definitions[1])),
         Err(_)
     ));
 }

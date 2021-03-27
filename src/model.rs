@@ -162,6 +162,7 @@ pub struct ComponentIntermediateState {
     pub components: Vec<Component>,
     pub connections: Vec<Connection>,
     modifications: Vec<ComponentStateModification>,
+    pub current_component_idx: Option<usize>,
 }
 
 impl ComponentIntermediateState {
@@ -225,7 +226,10 @@ impl Model {
                 continue;
             }
 
+            // Customise the state with some component-specific info
             let mut interpreter_state = intermediate_state.clone();
+            interpreter_state.current_component_idx = interpreter.component_idx;
+
             let interpreter_result = interpreter.execute_until_done(&mut interpreter_state);
             all_modifications.append(&mut interpreter_state.modifications);
 
