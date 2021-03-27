@@ -32,7 +32,7 @@ pub enum Instruction {
     Call,
     Halt,
     
-    // Requires the following on the stack (starting at the top):
+    // Requires the following on the stack (starting at the top, i.e. pushed last):
     //   - Suspension time
     SuspendSleep,
 

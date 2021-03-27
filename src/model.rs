@@ -49,6 +49,14 @@ pub struct ComponentDefinition {
     pub script: Arc<se::Function>,
 }
 
+impl ComponentDefinition {
+    pub fn pin_idx(&self, name: &String) -> Option<usize> {
+        self.pins
+            .iter()
+            .position(|pin_def| &pin_def.name == name)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Component {
     pub definition: Arc<ComponentDefinition>,
