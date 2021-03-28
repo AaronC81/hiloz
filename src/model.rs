@@ -176,9 +176,9 @@ impl ComponentIntermediateState {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum StepResult {
-    Ok,
+    Ok(Vec<ComponentStateModification>),
     Halt,
 }
 
@@ -187,6 +187,7 @@ impl Model {
         // Make a copy of the current state of the component system
         let intermediate_state = ComponentIntermediateState {
             components: self.components.clone(),
+            connections: self.connections.clone(),
             ..ComponentIntermediateState::default()
         };
         let mut all_modifications = vec![];
@@ -269,11 +270,26 @@ impl Model {
         }
 
         // Apply modifications to main component list
-        for modification in all_modifications {
+        for modification in &all_modifications {
             modification.apply(&mut self.components);
         }
 
-        StepResult::Ok
+        StepResult::Ok(all_modifications)
+    }
+
+    pub fn run<F>(&mut self, until_time: u64, mut between_steps: F) where F : FnMut(&Model, &Vec<ComponentStateModification>) {
+        loop {
+            match self.step() {
+                StepResult::Ok(m) => {
+                    between_steps(&self, &m);
+                    if self.time_elapsed >= until_time {
+                        break;
+                    }
+                }
+
+                StepResult::Halt => break
+            };
+        }
     }
 
     pub fn compile(str: String) -> Result<Model, Box<dyn std::error::Error>> {

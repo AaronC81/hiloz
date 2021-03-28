@@ -13,7 +13,7 @@ use crate::logic::Value;
 #[test]
 fn empty_model() {
     let mut model = create_model("");
-    assert_eq!(model.step(), StepResult::Halt);
+    assert!(matches!(model.step(), StepResult::Halt));
 }
 
 #[test]
@@ -30,7 +30,7 @@ fn simple_model() {
         component h = ConstantHigh();
     ");
     assert_eq!(model.components[0].pins[0].value, Value::Unknown);
-    assert_eq!(model.step(), StepResult::Ok);
+    assert!(matches!(model.step(), StepResult::Ok(_)));
     assert_eq!(model.components[0].pins[0].value, Value::High);
 }
 
