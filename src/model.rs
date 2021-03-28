@@ -28,7 +28,7 @@ pub struct PinConnection {
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Connection {
-    pins: Vec<PinConnection>,
+    pub pins: Vec<PinConnection>,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -276,15 +276,18 @@ impl Model {
         StepResult::Ok
     }
 
-    fn compile(str: String) -> Result<Model, Box<dyn std::error::Error>> {
+    pub fn compile(str: String) -> Result<Model, Box<dyn std::error::Error>> {
         let parsed = p::top_level().parse(str.as_bytes())?;
         mc::compile_model(&parsed)
     }
 }
 
 pub trait ConnectedComponents {
-    fn components(&self) -> Vec<Component>;
-    fn connections(&self) -> Vec<Connection>;
+    fn components(&self) -> &Vec<Component>;
+    fn connections(&self) -> &Vec<Connection>;
+
+    fn components_mut(&mut self) -> &mut Vec<Component>;
+    fn connections_mut(&mut self) -> &mut Vec<Connection>;
 
     fn connection_value(&self, connection: &Connection) -> Option<logic::Value> {
         let mut value_set = HashSet::new();
@@ -337,14 +340,61 @@ pub trait ConnectedComponents {
             self.components()[conn.component_idx].pins[conn.pin_idx].value
         }
     }
+
+    fn connect_pins(&mut self, pin_connections: &[PinConnection]) {
+        // Is any one of these pins already in a connection?
+        let mut existing_connection_idxs = vec![];
+        let all_connections = self.connections();
+        for pin_connection in pin_connections {
+            if let Some(conn) = all_connections
+                .iter()
+                .position(|c| c.pins.contains(pin_connection))
+            {
+                existing_connection_idxs.push(conn);
+                break;
+            }
+        }
+
+        if !existing_connection_idxs.is_empty() {
+            // If there are existing connections, merge them and add the new
+            // pins to that
+            let mut merged_connection = Connection { pins: vec![] };
+            for existing_connection_idx in existing_connection_idxs {
+                let existing_connection = self.connections_mut().remove(existing_connection_idx);
+                for existing_pin in existing_connection.pins {
+                    if !merged_connection.pins.contains(&existing_pin) {
+                        merged_connection.pins.push(existing_pin);
+                    }
+                }
+            }
+            for new_pin in pin_connections {
+                if !merged_connection.pins.contains(new_pin) {
+                    merged_connection.pins.push(new_pin.clone());
+                }
+            }
+            self.connections_mut().push(merged_connection);
+        } else {
+            // If there are no existing connections containing any of these
+            // pins, create a new one
+            self.connections_mut().push(Connection {
+                pins: pin_connections.to_vec(),
+            });
+        }        
+    }
 }
 
 impl ConnectedComponents for Model {
-    fn components(&self) -> Vec<Component> { self.components.clone() }
-    fn connections(&self) -> Vec<Connection> { self.connections.clone() }
+    fn components(&self) -> &Vec<Component> { &self.components }
+    fn connections(&self) -> &Vec<Connection> { &self.connections }
+
+    fn components_mut(&mut self) -> &mut Vec<Component> { &mut self.components }
+    fn connections_mut(&mut self) -> &mut Vec<Connection> { &mut self.connections }
 }
 
 impl ConnectedComponents for ComponentIntermediateState {
-    fn components(&self) -> Vec<Component> { self.components.clone() }
-    fn connections(&self) -> Vec<Connection> { self.connections.clone() }
+    fn components(&self) -> &Vec<Component> { &self.components }
+    fn connections(&self) -> &Vec<Connection> { &self.connections }
+
+    fn components_mut(&mut self) -> &mut Vec<Component> { &mut self.components }
+    fn connections_mut(&mut self) -> &mut Vec<Connection> { &mut self.connections }
 }

@@ -165,3 +165,66 @@ fn it_can_resume_multiple_interpreters_after_time_delay() {
     assert_eq!(model.interpreters[0].status, InterpreterStatus::Halted);
     assert_eq!(model.interpreters[1].status, InterpreterStatus::Halted);
 }
+
+#[test]
+fn it_can_make_connections() {
+    let mut model = utils::create_model_with_scripts(vec![
+        vec![], vec![], vec![], vec![]
+    ]);
+
+    model.connect_pins(&[
+        PinConnection { component_idx: 0, pin_idx: 0, },
+        PinConnection { component_idx: 1, pin_idx: 0, },
+    ]);
+    model.connect_pins(&[
+        PinConnection { component_idx: 2, pin_idx: 0, },
+        PinConnection { component_idx: 3, pin_idx: 0, },
+    ]);
+    
+    assert_eq!(
+        model.connections,
+        vec![
+            Connection { pins: vec![
+                PinConnection { component_idx: 0, pin_idx: 0, },
+                PinConnection { component_idx: 1, pin_idx: 0, },        
+            ] },
+            Connection { pins: vec![
+                PinConnection { component_idx: 2, pin_idx: 0, },
+                PinConnection { component_idx: 3, pin_idx: 0, },        
+            ] },
+        ]
+    )
+}
+
+#[test]
+fn it_can_merge_overlapping_connections() {
+    let mut model = utils::create_model_with_scripts(vec![
+        vec![], vec![], vec![], vec![]
+    ]);
+
+    model.connect_pins(&[
+        PinConnection { component_idx: 0, pin_idx: 0, },
+        PinConnection { component_idx: 1, pin_idx: 0, },
+    ]);
+    model.connect_pins(&[
+        PinConnection { component_idx: 1, pin_idx: 0, },
+        PinConnection { component_idx: 2, pin_idx: 0, },
+    ]);
+
+    let expected = vec![
+        Connection { pins: vec![
+            PinConnection { component_idx: 0, pin_idx: 0, },
+            PinConnection { component_idx: 1, pin_idx: 0, },        
+            PinConnection { component_idx: 2, pin_idx: 0, },
+        ] },
+    ];
+    
+    assert_eq!(model.connections, expected);
+
+    // This shouldn't change it
+    model.connect_pins(&[
+        PinConnection { component_idx: 2, pin_idx: 0, },
+        PinConnection { component_idx: 0, pin_idx: 0, },
+    ]);
+    assert_eq!(model.connections, expected);
+}
