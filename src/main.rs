@@ -3,7 +3,7 @@
 mod logic;
 mod model;
 mod script_engine;
-mod script_parser;
+mod parser;
 mod script_compiler;
 mod model_compiler;
 

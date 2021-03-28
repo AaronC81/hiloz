@@ -1,8 +1,8 @@
 use crate::script_compiler::*;
-use crate::script_parser::*;
+use crate::parser;
 use crate::script_engine::Instruction;
 use crate::script_engine::Object::*;
-use crate::script_parser::Node::*;
+use crate::parser::*;
 use crate::logic::*;
 use super::utils;
 

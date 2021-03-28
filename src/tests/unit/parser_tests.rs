@@ -1,6 +1,6 @@
-use crate::script_parser::*;
 use crate::script_engine::Object::*;
-use crate::script_parser::Node::*;
+use crate::parser::*;
+use crate::parser::Node::*;
 use crate::logic::*;
 
 #[test]

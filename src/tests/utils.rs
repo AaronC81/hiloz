@@ -59,3 +59,7 @@ pub fn create_model_with_scripts(scripts: Vec<Vec<Instruction>>) -> Model {
         suspended_timing_queue: BinaryHeap::new(),
     }
 }
+
+pub fn create_model(contents: &str) {
+    
+}

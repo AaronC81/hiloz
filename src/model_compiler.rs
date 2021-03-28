@@ -3,23 +3,23 @@ use std::{sync::Arc, collections::BinaryHeap};
 use crate::model as m;
 use crate::script_compiler as sc;
 use crate::script_engine as se;
-use crate::script_parser as sp;
+use crate::parser as p;
 use crate::logic as l;
 
 fn compile_component_definition(
-    node: &sp::Node,
+    node: &p::Node,
     model: &m::Model,
     component_idx: usize,
     component_definition: &mut m::ComponentDefinition,
 ) -> Result<(), String> {
     match node {
-        sp::Node::Body(b) => {
+        p::Node::Body(b) => {
             for n in b {
                 compile_component_definition(n, model, component_idx, component_definition)?
             }
         }
 
-        sp::Node::PinDefinition(name) => {
+        p::Node::PinDefinition(name) => {
             if component_definition.pins.iter().find(|p| &p.name == name).is_some() {
                 return Err(format!("duplicate pin name {}", name));
             }
@@ -29,7 +29,7 @@ fn compile_component_definition(
             }))
         }
 
-        sp::Node::ScriptDefinition(script_body) => {
+        p::Node::ScriptDefinition(script_body) => {
             if component_definition.script.is_some() {
                 return Err("cannot specify script twice".into())
             }
@@ -51,7 +51,7 @@ fn compile_component_definition(
     Ok(())
 }
 
-pub fn compile_model(node: &sp::Node) -> Result<m::Model, String> {
+pub fn compile_model(node: &p::Node) -> Result<m::Model, String> {
     let mut model = m::Model {
         component_definitions: vec![],
         components: vec![],
@@ -62,10 +62,10 @@ pub fn compile_model(node: &sp::Node) -> Result<m::Model, String> {
         time_elapsed: 0,
     };
 
-    if let sp::Node::Body(b) = node {
+    if let p::Node::Body(b) = node {
         for n in b {
             match n {
-                sp::Node::ComponentDefinition { name, body } => {
+                p::Node::ComponentDefinition { name, body } => {
                     let mut component_definition = m::ComponentDefinition {
                         name: name.clone(),
                         constructor: None,
@@ -87,7 +87,7 @@ pub fn compile_model(node: &sp::Node) -> Result<m::Model, String> {
                 }
 
 
-                sp::Node::ComponentInstantiation { instance_name, component_name, .. } => {
+                p::Node::ComponentInstantiation { instance_name, component_name, .. } => {
                     let definition = model.component_definitions
                         .iter()
                         .find(|def| &def.name == component_name);

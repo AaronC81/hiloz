@@ -3,11 +3,11 @@ use std::{collections::{BinaryHeap, HashMap}, sync::Arc};
 use m::PinDefinition;
 
 use crate::script_compiler::*;
-use crate::script_parser::*;
+use crate::parser;
 use crate::script_engine::Instruction;
 use crate::script_engine::Object::*;
 use crate::script_engine as se;
-use crate::script_parser::Node::*;
+use crate::parser::*;
 use crate::model_compiler::*;
 use crate::model::*;
 use crate::model as m;

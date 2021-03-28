@@ -1,6 +1,6 @@
 use crate::model as m;
 use crate::script_engine as se;
-use crate::script_parser as sp;
+use crate::parser as p;
 
 pub struct CompilationContext<'a> {
     parent: Option<&'a CompilationContext<'a>>,
@@ -32,24 +32,24 @@ impl<'a> CompilationContext<'a> {
 // TODO: bare expressions used as statements should be wrapped in a separate 
 // parse node so that we can pop what they leave on the stack, otherwise we
 // end up with a "memory leak" of sorts
-fn compile(node: &sp::Node, context: &CompilationContext) -> Result<Vec<se::Instruction>, String> {
+fn compile(node: &p::Node, context: &CompilationContext) -> Result<Vec<se::Instruction>, String> {
     match node {
-        sp::Node::Body(b) =>
+        p::Node::Body(b) =>
             b.iter()
                 .map(|n| compile(n, &context.child()))
                 .collect::<Result<Vec<_>, _>>()
                 .map(|x| x.concat()),
 
-        sp::Node::Constant(o) =>
+        p::Node::Constant(o) =>
             Ok(vec![se::Instruction::Push(o.clone())]),
 
-        sp::Node::Sleep(t) =>
+        p::Node::Sleep(t) =>
             Ok([
                 compile(t, context)?,
                 vec![se::Instruction::SuspendSleep]
             ].concat()),
 
-        sp::Node::Identifier(i) => {
+        p::Node::Identifier(i) => {
             let pin_idx = context.component_definition().pin_idx(i);
 
             if let Some(pin_idx) = pin_idx {
@@ -63,8 +63,8 @@ fn compile(node: &sp::Node, context: &CompilationContext) -> Result<Vec<se::Inst
             }
         },
 
-        sp::Node::PinAssignment { target, value } => {
-            let pin_idx = if let sp::Node::Identifier(i) = &**target {
+        p::Node::PinAssignment { target, value } => {
+            let pin_idx = if let p::Node::Identifier(i) = &**target {
                 if let Some(idx) = context.component_definition().pin_idx(&i) {
                     idx
                 } else {
@@ -88,7 +88,7 @@ fn compile(node: &sp::Node, context: &CompilationContext) -> Result<Vec<se::Inst
     }
 }
 
-pub fn compile_script(node: &sp::Node, model: Option<&m::Model>, component_definition: Option<&m::ComponentDefinition>) -> Result<Vec<se::Instruction>, String> {
+pub fn compile_script(node: &p::Node, model: Option<&m::Model>, component_definition: Option<&m::ComponentDefinition>) -> Result<Vec<se::Instruction>, String> {
     let mut result = compile(node, &CompilationContext {
         parent: None,
         model,
