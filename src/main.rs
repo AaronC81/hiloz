@@ -1,8 +1,8 @@
 #![feature(bindings_after_at)]
 #![feature(box_patterns)]
 
-use std::{error::Error, fs::File};
-use std::io::prelude::*;
+use std::{error::Error, fs::File, path::PathBuf, io::prelude::*};
+use structopt::StructOpt;
 
 mod logic;
 mod model;
@@ -15,28 +15,48 @@ mod vcd;
 #[cfg(test)]
 mod tests;
 
+#[derive(StructOpt)]
+#[structopt(name="simulator")]
+struct Opt {
+    /// Input model file
+    #[structopt(parse(from_os_str))]
+    input: PathBuf,
+
+    /// Output VCD file
+    #[structopt(parse(from_os_str))]
+    output: PathBuf,
+
+    /// The maximum number of time units to simulate for
+    #[structopt(short="t", long="max-time", default_value="100000000000")]
+    max_time: u64,
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut model = model::Model::compile("
-        define component Clock {
-            pin out;
+    let opt = Opt::from_args();
 
-            script {
-                out <- H;
-                sleep(1000);
-                out <- L;
-                sleep(1000);
-            }
-        }
+    // Load model
+    let mut input_model = "".into();
+    File::open(opt.input)?.read_to_string(&mut input_model)?;
+    let mut model = model::Model::compile(input_model)?;
 
-        component clk = Clock();
-    ".into())?;
+    println!("Model loaded with:");
+    println!("  - {} component definitions", model.component_definitions.len());
+    println!("  - {} component instances", model.components.len());
+    println!("  - {} connections", model.connections.len());
+    println!("  - {} script interpreters", model.interpreters.len());
+    println!("Simulating for up to {} time units", opt.max_time);
 
+    // Prepare VCD generator
     let mut vcd = vcd::VcdGenerator::default();
     vcd.generate_header(&model);
 
-    model.run(100000, |a, b| vcd.step(a, b));
+    // Simulate
+    model.run(opt.max_time, |a, b| vcd.step(a, b));
 
-    File::create("out.vcd")?.write_all(vcd.contents().as_bytes())?;
+    println!("Simulation complete at {}{} time units", model.time_elapsed, if model.time_elapsed > opt.max_time { "(!!!)" } else { "" });
+
+    // Write VCD
+    File::create(opt.output)?.write_all(vcd.contents().as_bytes())?;
 
     Ok(())
 }

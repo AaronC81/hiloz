@@ -24,6 +24,7 @@ impl VcdGenerator {
     }
 
     pub fn generate_header(&mut self, model: &m::Model) {
+        // TODO: customisable time unit, maybe in model?
         self.add("$timescale 1ms $end");
 
         self.add("$scope module simulation $end");
