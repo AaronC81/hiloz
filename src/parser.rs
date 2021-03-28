@@ -151,8 +151,8 @@ pub fn component_instantiation<'a>() -> Parser<'a, u8, Node> {
 }
 
 pub fn top_level<'a>() -> Parser<'a, u8, Node> {
-    (space() + (component_definition() | component_instantiation()) + space())
+    (((space() + (component_definition() | component_instantiation()) + space())
         .map(|((_, c), _)| c)
-        .repeat(0..)
-        .map(|x| Body(x)) 
+        .repeat(0..)) + end())
+        .map(|(x, _)| Body(x))
 }
