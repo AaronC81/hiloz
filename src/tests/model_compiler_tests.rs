@@ -23,7 +23,12 @@ fn it_compiles_a_model() {
                 pin b;
 
                 script {
-
+                    a <- H;
+                    b <- L;
+                    sleep(1000);
+                    a <- L;
+                    b <- H;
+                    sleep(1000);
                 }
             }
         ").unwrap()),
@@ -40,6 +45,32 @@ fn it_compiles_a_model() {
                     script: Some(Arc::new(se::Function {
                         parameters: vec![],
                         body: vec![
+                            Instruction::Push(LogicValue(Value::High)),
+                            Instruction::Push(Integer(0)),
+                            Instruction::GetOwnComponentIdx,
+                            Instruction::ModifyComponentPin,
+
+                            Instruction::Push(LogicValue(Value::Low)),
+                            Instruction::Push(Integer(1)),
+                            Instruction::GetOwnComponentIdx,
+                            Instruction::ModifyComponentPin,
+
+                            Instruction::Push(Integer(1000)),
+                            Instruction::SuspendSleep,
+
+                            Instruction::Push(LogicValue(Value::Low)),
+                            Instruction::Push(Integer(0)),
+                            Instruction::GetOwnComponentIdx,
+                            Instruction::ModifyComponentPin,
+
+                            Instruction::Push(LogicValue(Value::High)),
+                            Instruction::Push(Integer(1)),
+                            Instruction::GetOwnComponentIdx,
+                            Instruction::ModifyComponentPin,
+
+                            Instruction::Push(Integer(1000)),
+                            Instruction::SuspendSleep,
+
                             Instruction::Halt,
                         ],
                     })),
