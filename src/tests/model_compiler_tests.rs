@@ -1,4 +1,4 @@
-use std::{sync::Arc, collections::BinaryHeap};
+use std::{collections::{BinaryHeap, HashMap}, sync::Arc};
 
 use m::PinDefinition;
 
@@ -16,6 +16,39 @@ use super::utils;
 
 #[test]
 fn it_compiles_a_model() {
+    let function = Arc::new(se::Function {
+        parameters: vec![],
+        body: vec![
+            Instruction::Push(LogicValue(Value::High)),
+            Instruction::Push(Integer(0)),
+            Instruction::GetOwnComponentIdx,
+            Instruction::ModifyComponentPin,
+
+            Instruction::Push(LogicValue(Value::Low)),
+            Instruction::Push(Integer(1)),
+            Instruction::GetOwnComponentIdx,
+            Instruction::ModifyComponentPin,
+
+            Instruction::Push(Integer(1000)),
+            Instruction::SuspendSleep,
+
+            Instruction::Push(LogicValue(Value::Low)),
+            Instruction::Push(Integer(0)),
+            Instruction::GetOwnComponentIdx,
+            Instruction::ModifyComponentPin,
+
+            Instruction::Push(LogicValue(Value::High)),
+            Instruction::Push(Integer(1)),
+            Instruction::GetOwnComponentIdx,
+            Instruction::ModifyComponentPin,
+
+            Instruction::Push(Integer(1000)),
+            Instruction::SuspendSleep,
+
+            Instruction::Halt,
+        ],
+    });
+
     let component_def = Arc::new(m::ComponentDefinition {
         name: "Indicator".into(),
         constructor: None,
@@ -24,38 +57,7 @@ fn it_compiles_a_model() {
             Arc::new(m::PinDefinition { name: "a".into() }),
             Arc::new(m::PinDefinition { name: "b".into() }),
         ],
-        script: Some(Arc::new(se::Function {
-            parameters: vec![],
-            body: vec![
-                Instruction::Push(LogicValue(Value::High)),
-                Instruction::Push(Integer(0)),
-                Instruction::GetOwnComponentIdx,
-                Instruction::ModifyComponentPin,
-
-                Instruction::Push(LogicValue(Value::Low)),
-                Instruction::Push(Integer(1)),
-                Instruction::GetOwnComponentIdx,
-                Instruction::ModifyComponentPin,
-
-                Instruction::Push(Integer(1000)),
-                Instruction::SuspendSleep,
-
-                Instruction::Push(LogicValue(Value::Low)),
-                Instruction::Push(Integer(0)),
-                Instruction::GetOwnComponentIdx,
-                Instruction::ModifyComponentPin,
-
-                Instruction::Push(LogicValue(Value::High)),
-                Instruction::Push(Integer(1)),
-                Instruction::GetOwnComponentIdx,
-                Instruction::ModifyComponentPin,
-
-                Instruction::Push(Integer(1000)),
-                Instruction::SuspendSleep,
-
-                Instruction::Halt,
-            ],
-        })),
+        script: Some(function.clone()),
         variables: vec![],
     });
 
@@ -122,7 +124,34 @@ fn it_compiles_a_model() {
                 }
             ],
             connections: vec![],
-            interpreters: vec![],
+            interpreters: vec![
+                se::Interpreter {
+                    component_idx: Some(0),
+                    frames: vec![
+                        se::InterpreterFrame {
+                            arguments: vec![],
+                            ip: 0,
+                            locals: HashMap::new(),
+                            stack: vec![],
+                            function: function.clone(),
+                        }
+                    ],
+                    status: se::InterpreterStatus::Normal,
+                },
+                se::Interpreter {
+                    component_idx: Some(1),
+                    frames: vec![
+                        se::InterpreterFrame {
+                            arguments: vec![],
+                            ip: 0,
+                            locals: HashMap::new(),
+                            stack: vec![],
+                            function: function.clone(),
+                        }
+                    ],
+                    status: se::InterpreterStatus::Normal,
+                },
+            ],
             suspended_timing_queue: BinaryHeap::new(),
             time_elapsed: 0,
         })

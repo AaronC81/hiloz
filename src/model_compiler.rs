@@ -98,6 +98,7 @@ pub fn compile_model(node: &sp::Node) -> Result<m::Model, String> {
                         return Err(format!("no component named {}", component_name));
                     };
 
+                    // TODO: Might be good to make a Model::instantiate_component(&mut self, ...) to do all this
                     model.components.push(m::Component {
                         instance_name: instance_name.clone(),
                         definition: definition.clone(),
@@ -108,7 +109,23 @@ pub fn compile_model(node: &sp::Node) -> Result<m::Model, String> {
                             value: l::Value::Unknown,
                         }).collect(),
                         variables: vec![],
-                    })
+                    });
+
+                    if let Some(function) = definition.script.clone() {
+                        model.interpreters.push(se::Interpreter {
+                            component_idx: Some(model.components.len() - 1),
+                            frames: vec![
+                                se::InterpreterFrame {
+                                    arguments: vec![],
+                                    function,
+                                    ip: 0,
+                                    locals: Default::default(),
+                                    stack: vec![],
+                                }
+                            ],
+                            status: se::InterpreterStatus::Normal,
+                        });
+                    }
                 }
 
                 _ => unimplemented!("compile model child {:?}", n),
