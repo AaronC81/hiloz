@@ -16,7 +16,7 @@ fn it_compiles_a_blank_body_to_halt() {
 
 #[test]
 fn it_compiles_pin_assignments() {
-    let model = utils::create_model(vec![vec![], vec![]]);
+    let model = utils::create_model_with_scripts(vec![vec![], vec![]]);
 
     assert_eq!(
         compile_script(&script_block().parse(b"{

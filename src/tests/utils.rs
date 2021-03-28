@@ -5,7 +5,7 @@ use crate::logic::*;
 
 use std::{sync::Arc, collections::BinaryHeap};
 
-pub fn create_model(scripts: Vec<Vec<Instruction>>) -> Model {
+pub fn create_model_with_scripts(scripts: Vec<Vec<Instruction>>) -> Model {
     let functions = scripts.into_iter()
         .map(|body| Arc::new(Function {
             body,

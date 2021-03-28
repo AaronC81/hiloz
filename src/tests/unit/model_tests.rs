@@ -5,7 +5,7 @@ use super::utils;
 
 #[test]
 fn it_can_read_its_pin_state() {
-    let mut model = utils::create_model(vec![vec![
+    let mut model = utils::create_model_with_scripts(vec![vec![
         // Read pin, should be X
         Instruction::Push(Object::Integer(0)),
         Instruction::Push(Object::Integer(0)),
@@ -36,7 +36,7 @@ fn it_can_read_its_pin_state() {
 
 #[test]
 fn it_can_be_suspended_for_a_time_delay() {
-    let mut model = utils::create_model(vec![vec![
+    let mut model = utils::create_model_with_scripts(vec![vec![
         Instruction::Push(Object::Integer(1)),
         Instruction::Push(Object::Integer(1000)),
         Instruction::SuspendSleep,
@@ -105,7 +105,7 @@ fn it_can_be_suspended_for_a_time_delay() {
 
 #[test]
 fn it_can_resume_multiple_interpreters_after_time_delay() {
-    let mut model = utils::create_model(vec![
+    let mut model = utils::create_model_with_scripts(vec![
         vec![
             Instruction::Push(Object::Integer(1)),
             Instruction::Push(Object::Integer(1000)),
