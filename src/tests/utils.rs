@@ -27,8 +27,9 @@ pub fn create_model(scripts: Vec<Vec<Instruction>>) -> Model {
     }
 
     let mut components = vec![];
-    for def in &component_definitions {
+    for (i, def) in component_definitions.iter().enumerate() {
         components.push(Component {
+            instance_name: format!("instance{}", i),
             definition: def.clone(),
             constructor_arguments: vec![],
             pins: vec![

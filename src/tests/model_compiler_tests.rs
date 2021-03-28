@@ -16,6 +16,49 @@ use super::utils;
 
 #[test]
 fn it_compiles_a_model() {
+    let component_def = Arc::new(m::ComponentDefinition {
+        name: "Indicator".into(),
+        constructor: None,
+        functions: vec![],
+        pins: vec![
+            Arc::new(m::PinDefinition { name: "a".into() }),
+            Arc::new(m::PinDefinition { name: "b".into() }),
+        ],
+        script: Some(Arc::new(se::Function {
+            parameters: vec![],
+            body: vec![
+                Instruction::Push(LogicValue(Value::High)),
+                Instruction::Push(Integer(0)),
+                Instruction::GetOwnComponentIdx,
+                Instruction::ModifyComponentPin,
+
+                Instruction::Push(LogicValue(Value::Low)),
+                Instruction::Push(Integer(1)),
+                Instruction::GetOwnComponentIdx,
+                Instruction::ModifyComponentPin,
+
+                Instruction::Push(Integer(1000)),
+                Instruction::SuspendSleep,
+
+                Instruction::Push(LogicValue(Value::Low)),
+                Instruction::Push(Integer(0)),
+                Instruction::GetOwnComponentIdx,
+                Instruction::ModifyComponentPin,
+
+                Instruction::Push(LogicValue(Value::High)),
+                Instruction::Push(Integer(1)),
+                Instruction::GetOwnComponentIdx,
+                Instruction::ModifyComponentPin,
+
+                Instruction::Push(Integer(1000)),
+                Instruction::SuspendSleep,
+
+                Instruction::Halt,
+            ],
+        })),
+        variables: vec![],
+    });
+
     assert_eq!(
         compile_model(&top_level().parse(b"
             define component Indicator {
@@ -31,53 +74,53 @@ fn it_compiles_a_model() {
                     sleep(1000);
                 }
             }
+
+            component first_instance = Indicator();
+            component second_instance = Indicator();
         ").unwrap()),
         Ok(Model {
             component_definitions: vec![
-                Arc::new(m::ComponentDefinition {
-                    name: "Indicator".into(),
-                    constructor: None,
-                    functions: vec![],
-                    pins: vec![
-                        Arc::new(m::PinDefinition { name: "a".into() }),
-                        Arc::new(m::PinDefinition { name: "b".into() }),
-                    ],
-                    script: Some(Arc::new(se::Function {
-                        parameters: vec![],
-                        body: vec![
-                            Instruction::Push(LogicValue(Value::High)),
-                            Instruction::Push(Integer(0)),
-                            Instruction::GetOwnComponentIdx,
-                            Instruction::ModifyComponentPin,
-
-                            Instruction::Push(LogicValue(Value::Low)),
-                            Instruction::Push(Integer(1)),
-                            Instruction::GetOwnComponentIdx,
-                            Instruction::ModifyComponentPin,
-
-                            Instruction::Push(Integer(1000)),
-                            Instruction::SuspendSleep,
-
-                            Instruction::Push(LogicValue(Value::Low)),
-                            Instruction::Push(Integer(0)),
-                            Instruction::GetOwnComponentIdx,
-                            Instruction::ModifyComponentPin,
-
-                            Instruction::Push(LogicValue(Value::High)),
-                            Instruction::Push(Integer(1)),
-                            Instruction::GetOwnComponentIdx,
-                            Instruction::ModifyComponentPin,
-
-                            Instruction::Push(Integer(1000)),
-                            Instruction::SuspendSleep,
-
-                            Instruction::Halt,
-                        ],
-                    })),
-                    variables: vec![],
-                }),
+                component_def.clone()
             ],
-            components: vec![],
+            components: vec![
+                m::Component {
+                    definition: component_def.clone(),
+                    constructor_arguments: vec![],
+                    pins: vec![
+                        m::Pin {
+                            definition: component_def.clone().pins[0].clone(),
+                            pull: Value::Unknown,
+                            value: Value::Unknown,
+                        },
+                        m::Pin {
+                            definition: component_def.clone().pins[1].clone(),
+                            pull: Value::Unknown,
+                            value: Value::Unknown,
+                        },
+                    ],
+                    instance_name: "first_instance".into(),
+                    variables: vec![],
+                },
+
+                m::Component {
+                    definition: component_def.clone(),
+                    constructor_arguments: vec![],
+                    pins: vec![
+                        m::Pin {
+                            definition: component_def.clone().pins[0].clone(),
+                            pull: Value::Unknown,
+                            value: Value::Unknown,
+                        },
+                        m::Pin {
+                            definition: component_def.clone().pins[1].clone(),
+                            pull: Value::Unknown,
+                            value: Value::Unknown,
+                        },
+                    ],
+                    instance_name: "second_instance".into(),
+                    variables: vec![],
+                }
+            ],
             connections: vec![],
             interpreters: vec![],
             suspended_timing_queue: BinaryHeap::new(),

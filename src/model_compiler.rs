@@ -1,11 +1,10 @@
 use std::{sync::Arc, collections::BinaryHeap};
 
-use m::PinDefinition;
-
 use crate::model as m;
 use crate::script_compiler as sc;
 use crate::script_engine as se;
 use crate::script_parser as sp;
+use crate::logic as l;
 
 fn compile_component_definition(
     node: &sp::Node,
@@ -85,6 +84,31 @@ pub fn compile_model(node: &sp::Node) -> Result<m::Model, String> {
                     )?;
             
                     model.component_definitions.push(Arc::new(component_definition));
+                }
+
+
+                sp::Node::ComponentInstantiation { instance_name, component_name, .. } => {
+                    let definition = model.component_definitions
+                        .iter()
+                        .find(|def| &def.name == component_name);
+
+                    let definition = if let Some(x) = definition {
+                        x
+                    } else {
+                        return Err(format!("no component named {}", component_name));
+                    };
+
+                    model.components.push(m::Component {
+                        instance_name: instance_name.clone(),
+                        definition: definition.clone(),
+                        constructor_arguments: vec![],
+                        pins: definition.pins.iter().map(|pin_def| m::Pin {
+                            definition: pin_def.clone(),
+                            pull: l::Value::Unknown,
+                            value: l::Value::Unknown,
+                        }).collect(),
+                        variables: vec![],
+                    })
                 }
 
                 _ => unimplemented!("compile model child {:?}", n),

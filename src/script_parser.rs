@@ -24,7 +24,7 @@ pub enum Node {
     FunctionDefinition { name: String, parameters: Vec<String>, body: Box<Node> },
     ScriptDefinition(Box<Node>),
 
-    ComponentInstantiation { instance_name: Box<Node>, component_name: Box<Node>, arguments: Vec<Node> },
+    ComponentInstantiation { instance_name: String, component_name: String, arguments: Vec<Node> },
     Connect(Vec<Node>),
     Pull { component: Vec<Node>, pull: logic::Value },
 
@@ -135,8 +135,23 @@ pub fn script_sleep_statement() -> Parser<u8, Node> {
         .map(|(((_, e), _), _)| Sleep(Box::new(e)))
 }
 
+pub fn component_instantiation() -> Parser<u8, Node> {
+    (
+        seq(b"component") + must_space() + raw_identifier()
+        + space() + sym(b'=') + space() + raw_identifier() + space()
+        // TODO: constructor parameters
+        + lparen() + space() + rparen()
+        + semi()
+    // we lisp now
+    ).map(|((((((((((_, i), _), _), _), c), _), _), _), _), _)| ComponentInstantiation {
+        instance_name: i,
+        component_name: c,
+        arguments: vec![],
+    })
+}
+
 pub fn top_level() -> Parser<u8, Node> {
-    (space() + component_definition() + space())
+    (space() + (component_definition() | component_instantiation()) + space())
         .map(|((_, c), _)| c)
         .repeat(0..)
         .map(|x| Body(x)) 

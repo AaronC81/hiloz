@@ -60,6 +60,7 @@ impl ComponentDefinition {
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Component {
+    pub instance_name: String,
     pub definition: Arc<ComponentDefinition>,
     pub pins: Vec<Pin>,
     pub variables: Vec<Variable>,
