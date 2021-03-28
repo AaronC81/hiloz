@@ -174,8 +174,14 @@ impl ComponentIntermediateState {
     }
 }
 
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+pub enum StepResult {
+    Ok,
+    Halt,
+}
+
 impl Model {
-    pub fn step(&mut self) {
+    pub fn step(&mut self) -> StepResult {
         // Make a copy of the current state of the component system
         let intermediate_state = ComponentIntermediateState {
             components: self.components.clone(),
@@ -186,9 +192,18 @@ impl Model {
         // Is there no interpreter which can run without unsuspension?
         // (I think there should always be none, but check just in case)
         if !self.interpreters.iter().any(|i| i.can_run()) {
+            // If there are no interpreters to unsuspend, and no interpreters
+            // which were going to take a step, then the model will never change
+            // again
+            let first_interpreter_to_unsuspend = if let Some(x) = self.suspended_timing_queue.pop() {
+                x
+            } else {
+                return StepResult::Halt;
+            };
+
             // Unsuspend the soonest interpreters
             let mut next_interpreters_to_unsuspend = vec![
-                self.suspended_timing_queue.pop().expect("no interpreters to unsuspend")
+                first_interpreter_to_unsuspend
             ];
 
             // Are there any at the same time? If so, let's unsuspend those too
@@ -255,6 +270,8 @@ impl Model {
         for modification in all_modifications {
             modification.apply(&mut self.components);
         }
+
+        StepResult::Ok
     }
 }
 
