@@ -3,7 +3,7 @@ use super::logic;
 
 use pom::parser::*;
 use pom::char_class::*;
-use pom::Parser;
+use pom::parser::Parser;
 
 use std::str::{FromStr, from_utf8};
 use std::error::Error;
@@ -34,26 +34,26 @@ pub enum Node {
 use Node::*;
 use se::Object::*;
 
-fn space() -> Parser<u8, ()> { is_a(multispace).repeat(0..).discard() }
-fn must_space() -> Parser<u8, ()> { is_a(multispace).repeat(1..).discard().name("whitespace") }
-fn semi() -> Parser<u8, ()> { (space() + sym(b';') + space()).discard().name("semicolon") }
-fn lbrace() -> Parser<u8, ()> { (space() + sym(b'{') + space()).discard().name("left brace") }
-fn rbrace() -> Parser<u8, ()> { (space() + sym(b'}') + space()).discard().name("right brace") }
-fn lparen() -> Parser<u8, ()> { (space() + sym(b'(') + space()).discard().name("left parenthesis") }
-fn rparen() -> Parser<u8, ()> { (space() + sym(b')') + space()).discard().name("right parenthesis") }
+fn space<'a>() -> Parser<'a, u8, ()> { is_a(multispace).repeat(0..).discard() }
+fn must_space<'a>() -> Parser<'a, u8, ()> { is_a(multispace).repeat(1..).discard().name("whitespace") }
+fn semi<'a>() -> Parser<'a, u8, ()> { (space() + sym(b';') + space()).discard().name("semicolon") }
+fn lbrace<'a>() -> Parser<'a, u8, ()> { (space() + sym(b'{') + space()).discard().name("left brace") }
+fn rbrace<'a>() -> Parser<'a, u8, ()> { (space() + sym(b'}') + space()).discard().name("right brace") }
+fn lparen<'a>() -> Parser<'a, u8, ()> { (space() + sym(b'(') + space()).discard().name("left parenthesis") }
+fn rparen<'a>() -> Parser<'a, u8, ()> { (space() + sym(b')') + space()).discard().name("right parenthesis") }
 
-pub fn raw_integer() -> Parser<u8, i64> {
+pub fn raw_integer<'a>() -> Parser<'a, u8, i64> {
     (sym(b'-').opt() + is_a(digit).repeat(1..))
         .collect()
         .convert(from_utf8)
         .convert(i64::from_str)
 }
 
-pub fn integer() -> Parser<u8, Node> {
+pub fn integer<'a>() -> Parser<'a, u8, Node> {
     raw_integer().map(|s| Constant(Integer(s)))
 }
 
-pub fn raw_identifier() -> Parser<u8, String> {
+pub fn raw_identifier<'a>() -> Parser<'a, u8, String> {
     // TODO: reject keywords or logic value literals
     ((is_a(alpha) | sym(b'_')) + (is_a(alpha) | is_a(digit) | sym(b'_')).repeat(0..))
         .collect()
@@ -61,27 +61,27 @@ pub fn raw_identifier() -> Parser<u8, String> {
         .map(Into::into)
 }
 
-pub fn identifier() -> Parser<u8, Node> {
+pub fn identifier<'a>() -> Parser<'a, u8, Node> {
     raw_identifier().map(|s| Identifier(s.into()))
 }
 
-pub fn logic_value() -> Parser<u8, Node> {
+pub fn logic_value<'a>() -> Parser<'a, u8, Node> {
     sym(b'H').map(|_| Constant(LogicValue(logic::Value::High)))
     | sym(b'L').map(|_| Constant(LogicValue(logic::Value::Low)))
     | sym(b'X').map(|_| Constant(LogicValue(logic::Value::Unknown)))
 }
 
-pub fn pin_definition() -> Parser<u8, Node> {
+pub fn pin_definition<'a>() -> Parser<'a, u8, Node> {
     (seq(b"pin") + must_space() + raw_identifier() + semi())
         .map(|((_, id), _)| PinDefinition(id))
 }
 
-pub fn script_definition() -> Parser<u8, Node> {
+pub fn script_definition<'a>() -> Parser<'a, u8, Node> {
     (seq(b"script") + space() + script_block())
         .map(|(_, body)| ScriptDefinition(Box::new(body)))
 }
 
-pub fn component_definition() -> Parser<u8, Node> {
+pub fn component_definition<'a>() -> Parser<'a, u8, Node> {
     (
         seq(b"define") + must_space() + seq(b"component") + must_space()
         + raw_identifier() + space()
@@ -93,7 +93,7 @@ pub fn component_definition() -> Parser<u8, Node> {
         })
 }
 
-pub fn component_definition_body() -> Parser<u8, Node> {
+pub fn component_definition_body<'a>() -> Parser<'a, u8, Node> {
     (
         lbrace()
         + (pin_definition() | script_definition()).repeat(0..)
@@ -102,7 +102,7 @@ pub fn component_definition_body() -> Parser<u8, Node> {
         .map(|((_, defs), _)| Node::Body(defs))
 }
 
-pub fn script_block() -> Parser<u8, Node> {
+pub fn script_block<'a>() -> Parser<'a, u8, Node> {
     (
         lbrace()
         + space()
@@ -113,16 +113,16 @@ pub fn script_block() -> Parser<u8, Node> {
         .map(|(((_, e), _), _)| Body(e))
 }
 
-pub fn script_statement() -> Parser<u8, Node> {
+pub fn script_statement<'a>() -> Parser<'a, u8, Node> {
     ((script_sleep_statement() | pin_assignment() | script_expression())
         + space() + semi()).map(|((e, _), _)| e)
 }
 
-pub fn script_expression() -> Parser<u8, Node> {
+pub fn script_expression<'a>() -> Parser<'a, u8, Node> {
     integer() | logic_value() | identifier()
 }
 
-pub fn pin_assignment() -> Parser<u8, Node> {
+pub fn pin_assignment<'a>() -> Parser<'a, u8, Node> {
     (identifier() + space() + seq(b"<-") + space() + script_expression())
         .map(|((((i, _), _), _), e)| PinAssignment {
             target: Box::new(i),
@@ -130,12 +130,12 @@ pub fn pin_assignment() -> Parser<u8, Node> {
         })
 }
 
-pub fn script_sleep_statement() -> Parser<u8, Node> {
+pub fn script_sleep_statement<'a>() -> Parser<'a, u8, Node> {
     (seq(b"sleep") + space() + lparen() + space() + script_expression() + space() + rparen())
         .map(|(((_, e), _), _)| Sleep(Box::new(e)))
 }
 
-pub fn component_instantiation() -> Parser<u8, Node> {
+pub fn component_instantiation<'a>() -> Parser<'a, u8, Node> {
     (
         seq(b"component") + must_space() + raw_identifier()
         + space() + sym(b'=') + space() + raw_identifier() + space()
@@ -150,7 +150,7 @@ pub fn component_instantiation() -> Parser<u8, Node> {
     })
 }
 
-pub fn top_level() -> Parser<u8, Node> {
+pub fn top_level<'a>() -> Parser<'a, u8, Node> {
     (space() + (component_definition() | component_instantiation()) + space())
         .map(|((_, c), _)| c)
         .repeat(0..)
