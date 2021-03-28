@@ -33,3 +33,25 @@ fn simple_model() {
     assert_eq!(model.step(), StepResult::Ok);
     assert_eq!(model.components[0].pins[0].value, Value::High);
 }
+
+#[test]
+fn simple_model_with_connection() {
+    let mut model = create_model("
+        define component ConstantHigh {
+            pin out;
+
+            script {
+                out <- H;
+            }
+        }
+
+        define component Stub {
+            pin in;
+        }
+
+        component h = ConstantHigh();
+        component s = Stub();
+
+        connect(h.out, s.in);
+    ");
+}

@@ -1,4 +1,5 @@
 #![feature(bindings_after_at)]
+#![feature(box_patterns)]
 
 mod logic;
 mod model;

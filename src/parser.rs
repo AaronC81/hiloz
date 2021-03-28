@@ -65,6 +65,27 @@ pub fn identifier<'a>() -> Parser<'a, u8, Node> {
     raw_identifier().map(|s| Identifier(s.into()))
 }
 
+pub fn accessor<'a>() -> Parser<'a, u8, Node> {
+    (identifier() + space() + sym(b'.') + space() + identifier())
+        .map(|((((t, _), _), _), v)| Accessor {
+            target: Box::new(t),
+            name: Box::new(v),
+        })
+}
+
+pub fn argument_list<'a>() -> Parser<'a, u8, Vec<Node>> {
+    (script_expression() + space()
+        + (sym(b',') + space() + script_expression() + space()).repeat(0..))
+        .opt()
+        .map(|x| match x {
+            Some(((first, _), others)) => [
+                vec![first],
+                others.into_iter().map(|((_, node), _)| node).collect(),
+            ].concat(),
+            None => vec![],
+        })
+}
+
 pub fn logic_value<'a>() -> Parser<'a, u8, Node> {
     sym(b'H').map(|_| Constant(LogicValue(logic::Value::High)))
     | sym(b'L').map(|_| Constant(LogicValue(logic::Value::Low)))
@@ -79,6 +100,11 @@ pub fn pin_definition<'a>() -> Parser<'a, u8, Node> {
 pub fn script_definition<'a>() -> Parser<'a, u8, Node> {
     (seq(b"script") + space() + script_block())
         .map(|(_, body)| ScriptDefinition(Box::new(body)))
+}
+
+pub fn connect_definition<'a>() -> Parser<'a, u8, Node> {
+    (seq(b"connect") + space() + lparen() + space() + argument_list() + space() + rparen() + semi())
+        .map(|((((_, v), _), _), _)| Connect(v))
 }
 
 pub fn component_definition<'a>() -> Parser<'a, u8, Node> {
@@ -119,7 +145,7 @@ pub fn script_statement<'a>() -> Parser<'a, u8, Node> {
 }
 
 pub fn script_expression<'a>() -> Parser<'a, u8, Node> {
-    integer() | logic_value() | identifier()
+    accessor() | integer() | logic_value() | identifier()
 }
 
 pub fn pin_assignment<'a>() -> Parser<'a, u8, Node> {
@@ -151,7 +177,7 @@ pub fn component_instantiation<'a>() -> Parser<'a, u8, Node> {
 }
 
 pub fn top_level<'a>() -> Parser<'a, u8, Node> {
-    (((space() + (component_definition() | component_instantiation()) + space())
+    (((space() + (component_definition() | component_instantiation() | connect_definition()) + space())
         .map(|((_, c), _)| c)
         .repeat(0..)) + end())
         .map(|(x, _)| Body(x))

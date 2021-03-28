@@ -381,6 +381,10 @@ pub trait ConnectedComponents {
             });
         }        
     }
+
+    fn component_idx(&self, name: &String) -> Option<usize> {
+        self.components().iter().position(|c| &c.instance_name == name)
+    }
 }
 
 impl ConnectedComponents for Model {

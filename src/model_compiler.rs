@@ -1,5 +1,7 @@
 use std::{sync::Arc, collections::BinaryHeap, error::Error, fmt};
 
+use m::ConnectedComponents;
+
 use crate::model as m;
 use crate::script_compiler as sc;
 use crate::script_engine as se;
@@ -72,6 +74,26 @@ fn compile_component_definition(
     };
 
     Ok(())
+}
+
+fn compile_connection(
+    nodes: &Vec<p::Node>,
+    model: &m::Model,
+) -> Result<Vec<m::PinConnection>, Box<dyn Error>> {
+    nodes.iter().map(|node| match node {
+        p::Node::Accessor { target: box p::Node::Identifier(component_name), name: box p::Node::Identifier(pin_name) } => {
+            let component_idx = model.component_idx(component_name)
+                .ok_or(Box::new(ModelCompilerError::new("missing component")))?;
+            let pin_idx = model.components[component_idx].definition.pin_idx(pin_name)
+                .ok_or(Box::new(ModelCompilerError::new("missing pin")))?;
+
+            Ok(m::PinConnection { component_idx, pin_idx })
+        }
+        
+        _ => Err(ModelCompilerError::new(
+            "connection parameters must be of form: instance.pin"
+        ).into())
+    }).collect()
 }
 
 pub fn compile_model(node: &p::Node) -> Result<m::Model, Box<dyn Error>> {
@@ -151,6 +173,11 @@ pub fn compile_model(node: &p::Node) -> Result<m::Model, Box<dyn Error>> {
                             status: se::InterpreterStatus::Normal,
                         });
                     }
+                }
+
+                p::Node::Connect(nodes) => {
+                    let pins = compile_connection(nodes, &model)?;
+                    model.connect_pins(&pins[..]);
                 }
 
                 _ => unimplemented!("compile model child {:?}", n),

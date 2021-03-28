@@ -27,7 +27,8 @@ fn it_parses_component_definitions() {
             a <- L;
             sleep(1000);
         }
-    }").unwrap(), ComponentDefinition {
+    }
+    ").unwrap(), ComponentDefinition {
         name: "Something".into(),
         body: Box::new(Body(vec![
             PinDefinition("a".into()),
@@ -47,4 +48,21 @@ fn it_parses_component_definitions() {
         ])),
 
     })
+}
+
+#[test]
+fn it_parses_connections() {
+    assert_eq!(
+        connect_definition().parse(b"connect(a.b, c.d);").unwrap(),
+        Connect(vec![
+            Accessor {
+                target: Box::new(Identifier("a".into())),
+                name: Box::new(Identifier("b".into())),
+            },
+            Accessor {
+                target: Box::new(Identifier("c".into())),
+                name: Box::new(Identifier("d".into())),
+            },
+        ]),
+    );
 }
