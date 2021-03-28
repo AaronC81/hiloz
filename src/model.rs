@@ -275,6 +275,11 @@ impl Model {
 
         StepResult::Ok
     }
+
+    fn compile(str: String) -> Result<Model, Box<dyn std::error::Error>> {
+        let parsed = p::top_level().parse(str.as_bytes())?;
+        mc::compile_model(&parsed)
+    }
 }
 
 pub trait ConnectedComponents {
@@ -331,11 +336,6 @@ pub trait ConnectedComponents {
         } else {
             self.components()[conn.component_idx].pins[conn.pin_idx].value
         }
-    }
-
-    fn compile(str: String) -> Result<Model, Box<dyn std::error::Error>> {
-        let parsed = p::top_level().parse(str.as_bytes())?;
-        mc::compile_model(&parsed)
     }
 }
 
