@@ -2,6 +2,8 @@ use binary_heap::PeekMut;
 
 use super::logic;
 use super::script_engine as se;
+use super::model_compiler as mc;
+use super::parser as p;
 
 use std::{cmp::Ordering, collections::{BinaryHeap, VecDeque, binary_heap}, sync::Arc};
 use std::collections::HashSet;
@@ -329,6 +331,11 @@ pub trait ConnectedComponents {
         } else {
             self.components()[conn.component_idx].pins[conn.pin_idx].value
         }
+    }
+
+    fn compile(str: String) -> Result<Model, Box<dyn std::error::Error>> {
+        let parsed = p::top_level().parse(str.as_bytes())?;
+        mc::compile_model(&parsed)
     }
 }
 

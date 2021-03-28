@@ -1,4 +1,4 @@
-use std::{sync::Arc, collections::BinaryHeap};
+use std::{sync::Arc, collections::BinaryHeap, error::Error, fmt};
 
 use crate::model as m;
 use crate::script_compiler as sc;
@@ -6,12 +6,31 @@ use crate::script_engine as se;
 use crate::parser as p;
 use crate::logic as l;
 
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub struct ModelCompilerError {
+    description: String,
+}
+
+impl ModelCompilerError {
+    fn new<S>(description: S) -> ModelCompilerError where S : Into<String> {
+        ModelCompilerError { description: description.into() }
+    }
+}
+
+impl fmt::Display for ModelCompilerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Model compiler error: {}", self.description)
+    }
+}
+
+impl Error for ModelCompilerError {}
+
 fn compile_component_definition(
     node: &p::Node,
     model: &m::Model,
     component_idx: usize,
     component_definition: &mut m::ComponentDefinition,
-) -> Result<(), String> {
+) -> Result<(), Box<dyn Error>> {
     match node {
         p::Node::Body(b) => {
             for n in b {
@@ -21,7 +40,9 @@ fn compile_component_definition(
 
         p::Node::PinDefinition(name) => {
             if component_definition.pins.iter().find(|p| &p.name == name).is_some() {
-                return Err(format!("duplicate pin name {}", name));
+                return Err(ModelCompilerError::new(
+                    format!("duplicate pin name {}", name)
+                ).into());
             }
 
             component_definition.pins.push(Arc::new(m::PinDefinition {
@@ -31,7 +52,9 @@ fn compile_component_definition(
 
         p::Node::ScriptDefinition(script_body) => {
             if component_definition.script.is_some() {
-                return Err("cannot specify script twice".into())
+                return Err(ModelCompilerError::new(
+                    "cannot specify script twice"
+                ).into())
             }
 
             let instructions = sc::compile_script(
@@ -51,7 +74,7 @@ fn compile_component_definition(
     Ok(())
 }
 
-pub fn compile_model(node: &p::Node) -> Result<m::Model, String> {
+pub fn compile_model(node: &p::Node) -> Result<m::Model, Box<dyn Error>> {
     let mut model = m::Model {
         component_definitions: vec![],
         components: vec![],
@@ -95,7 +118,9 @@ pub fn compile_model(node: &p::Node) -> Result<m::Model, String> {
                     let definition = if let Some(x) = definition {
                         x
                     } else {
-                        return Err(format!("no component named {}", component_name));
+                        return Err(ModelCompilerError::new(
+                            format!("no component named {}", component_name)
+                        ).into());
                     };
 
                     // TODO: Might be good to make a Model::instantiate_component(&mut self, ...) to do all this

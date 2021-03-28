@@ -62,7 +62,7 @@ fn it_compiles_a_model() {
     });
 
     assert_eq!(
-        compile_model(&top_level().parse(b"
+        Model::compile("
             define component Indicator {
                 pin a;
                 pin b;
@@ -79,8 +79,8 @@ fn it_compiles_a_model() {
 
             component first_instance = Indicator();
             component second_instance = Indicator();
-        ").unwrap()),
-        Ok(Model {
+        ".into()).unwrap(),
+        Model {
             component_definitions: vec![
                 component_def.clone()
             ],
@@ -154,6 +154,6 @@ fn it_compiles_a_model() {
             ],
             suspended_timing_queue: BinaryHeap::new(),
             time_elapsed: 0,
-        })
+        }
     )
 }

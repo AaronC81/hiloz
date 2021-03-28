@@ -62,6 +62,6 @@ pub fn create_model_with_scripts(scripts: Vec<Vec<Instruction>>) -> Model {
     }
 }
 
-pub fn create_model(contents: &'static [u8]) -> Model {
-    compile_model(&top_level().parse(contents).unwrap()).unwrap()
+pub fn create_model<S>(contents: S) -> Model where S : Into<String> {
+    Model::compile(contents.into()).unwrap()
 }
