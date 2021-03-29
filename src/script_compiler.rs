@@ -82,7 +82,15 @@ fn compile(node: &p::Node, context: &CompilationContext) -> Result<Vec<se::Instr
                     se::Instruction::ModifyComponentPin,
                 ]
             ].concat())
-        }
+        },
+
+        p::Node::Dump(node) =>
+            Ok([
+                compile(node, context)?,
+                vec![
+                    se::Instruction::Dump,
+                ]
+            ].concat()),
 
         _ => unimplemented!()
     }

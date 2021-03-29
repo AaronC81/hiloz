@@ -42,6 +42,7 @@ pub fn create_model_with_scripts(scripts: Vec<Vec<Instruction>>) -> Model {
                 }
             ],
             variables: vec![],
+            dumps: vec![],
         });
     }
     

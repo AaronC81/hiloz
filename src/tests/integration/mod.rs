@@ -1,14 +1,7 @@
 use super::utils::create_model;
-use crate::model::StepResult;
+use crate::model::{ConnectedComponents, StepResult};
 use crate::logic::Value;
-
-// TODO: add a "_dump" function which will collect all dumped values into a
-// vec, which we can then access through the model later on. This could make
-// writing complex tests easier as we get the "true" mid-execution values as far
-// as scripts are concerned
-
-// Maybe have it be per-component in the CIS, like Vec<{ component_idx: usize, value: Object }>,
-// then we collect them after each step into some model-maintained vec
+use crate::script_engine as se;
 
 #[test]
 fn empty_model() {
@@ -41,12 +34,19 @@ fn simple_model_with_connection() {
             pin out;
 
             script {
+                sleep(50);
                 out <- H;
             }
         }
 
         define component Stub {
             pin in;
+
+            script {
+                _dump(in);
+                sleep(100);
+                _dump(in);
+            }
         }
 
         component h = ConstantHigh();
@@ -54,4 +54,12 @@ fn simple_model_with_connection() {
 
         connect(h.out, s.in);
     ");
+    model.run(100000, |_, _| {});
+    assert_eq!(
+        model.components[model.component_idx(&"s".to_string()).unwrap()].dumps,
+        vec![
+            se::Object::LogicValue(Value::Unknown),
+            se::Object::LogicValue(Value::High),
+        ]
+    )
 }

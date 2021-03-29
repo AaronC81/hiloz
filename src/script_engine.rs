@@ -28,6 +28,7 @@ pub struct Function {
 pub enum Instruction {
     Push(Object),
     Pop,
+    Dump,
     Return,
     Call,
     Halt,
@@ -111,6 +112,15 @@ impl InterpreterFrame {
 
             Instruction::Pop => {
                 self.stack.pop();
+                InstructionExecutionResult::Ok
+            }
+
+            Instruction::Dump => {
+                let dumped = self.stack.pop().expect("stack empty");
+                state.modify(ComponentStateModification {
+                    component_idx: state.current_component_idx.unwrap(),
+                    description: ComponentStateModificationDescription::Dump(dumped),
+                });
                 InstructionExecutionResult::Ok
             }
 

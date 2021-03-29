@@ -156,6 +156,7 @@ pub fn compile_model(node: &p::Node) -> Result<m::Model, Box<dyn Error>> {
                             value: l::Value::Unknown,
                         }).collect(),
                         variables: vec![],
+                        dumps: vec![],
                     });
 
                     if let Some(function) = definition.script.clone() {

@@ -66,7 +66,7 @@ pub struct Component {
     pub definition: Arc<ComponentDefinition>,
     pub pins: Vec<Pin>,
     pub variables: Vec<Variable>,
-
+    pub dumps: Vec<se::Object>,
     pub constructor_arguments: Vec<se::Object>,
 }
 
@@ -144,7 +144,8 @@ pub enum ComponentStateModificationDescription {
     Variable {
         idx: usize,
         value: se::Object,
-    }
+    },
+    Dump(se::Object),
 }
 
 impl ComponentStateModificationDescription {
@@ -155,6 +156,9 @@ impl ComponentStateModificationDescription {
             }
             Self::Variable { idx, value } => {
                 component.variables[idx].value = value;
+            }
+            Self::Dump(value) => {
+                component.dumps.push(value);
             }
         }
     }

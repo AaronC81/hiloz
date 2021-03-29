@@ -102,6 +102,7 @@ fn it_compiles_a_model() {
                     ],
                     instance_name: "first_instance".into(),
                     variables: vec![],
+                    dumps: vec![],
                 },
 
                 m::Component {
@@ -121,6 +122,7 @@ fn it_compiles_a_model() {
                     ],
                     instance_name: "second_instance".into(),
                     variables: vec![],
+                    dumps: vec![],
                 }
             ],
             connections: vec![],

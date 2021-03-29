@@ -15,6 +15,7 @@ pub enum Node {
     PinAssignment { target: Box<Node>, value: Box<Node> },
     Accessor { target: Box<Node>, name: Box<Node> },
     Sleep(Box<Node>),
+    Dump(Box<Node>),
     Return(Box<Node>),
 
     PinDefinition(String),
@@ -140,7 +141,7 @@ pub fn script_block<'a>() -> Parser<'a, u8, Node> {
 }
 
 pub fn script_statement<'a>() -> Parser<'a, u8, Node> {
-    ((script_sleep_statement() | pin_assignment() | script_expression())
+    ((script_dump_statement() | script_sleep_statement() | pin_assignment() | script_expression())
         + space() + semi()).map(|((e, _), _)| e)
 }
 
@@ -159,6 +160,11 @@ pub fn pin_assignment<'a>() -> Parser<'a, u8, Node> {
 pub fn script_sleep_statement<'a>() -> Parser<'a, u8, Node> {
     (seq(b"sleep") + space() + lparen() + space() + script_expression() + space() + rparen())
         .map(|(((_, e), _), _)| Sleep(Box::new(e)))
+}
+
+pub fn script_dump_statement<'a>() -> Parser<'a, u8, Node> {
+    (seq(b"_dump") + space() + lparen() + space() + script_expression() + space() + rparen())
+        .map(|(((_, e), _), _)| Dump(Box::new(e)))
 }
 
 pub fn component_instantiation<'a>() -> Parser<'a, u8, Node> {
