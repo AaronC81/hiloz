@@ -29,6 +29,9 @@ pub enum Instruction {
     Push(Object),
     Pop,
     Dump,
+    DefineLocal(String),
+    SetLocal(String),
+    GetLocal(String),
     Return,
     Call,
     Halt,
@@ -81,6 +84,9 @@ pub enum InstructionExecutionResult {
     OkHalt,
     OkSuspend(SuspensionMode),
     OkNewFrame(InterpreterFrame),
+    OkDefineLocal(String),
+    OkSetLocal { name: String, value: Object },
+    OkGetLocal(String),
     Err(String),
 }
 
@@ -123,6 +129,19 @@ impl InterpreterFrame {
                 });
                 InstructionExecutionResult::Ok
             }
+
+            Instruction::DefineLocal(name) =>
+                InstructionExecutionResult::OkDefineLocal(name.clone()),
+
+            Instruction::SetLocal(name) => {
+                InstructionExecutionResult::OkSetLocal {
+                    name: name.clone(),
+                    value: self.stack.pop().expect("stack empty"),
+                }
+            }
+
+            Instruction::GetLocal(name) =>
+                InstructionExecutionResult::OkGetLocal(name.clone()),
 
             Instruction::Return => {
                 InstructionExecutionResult::OkReturn
@@ -247,6 +266,29 @@ impl Interpreter {
         self.status = InterpreterStatus::Normal;
     }
 
+    pub fn define_local(&mut self, name: &String) {
+        self.current_frame().locals.insert(name.clone(), Object::Null);
+    }
+
+    pub fn find_frame_defining_local(&mut self, name: &String) -> Option<&mut InterpreterFrame> {
+        self.frames.iter_mut()
+            .rev()
+            .find(|frame| frame.locals.contains_key(name))
+    }
+
+    pub fn set_local(&mut self, name: &String, value: Object) {
+        let frame = self.find_frame_defining_local(name).expect("local not defined");
+        frame.locals.insert(name.clone(), value);
+    }
+
+    // TODO: we don't want to be able to access locals across function call
+    // boundaries - when those are implemented, be careful!
+    // Admittedly the compiler should be able to protect against this
+    pub fn get_local(&mut self, name: &String) -> Object {
+        let frame = self.find_frame_defining_local(name).expect("local not defined");
+        frame.locals[name].clone()
+    }
+
     pub fn execute_one_instruction(&mut self, state: &mut ComponentIntermediateState) -> FrameExecutionResult {
         let result = self.current_frame().execute_one_instruction(state);
         match result {
@@ -274,7 +316,20 @@ impl Interpreter {
             InstructionExecutionResult::OkNewFrame(frame) => {
                 self.frames.push(frame);
                 FrameExecutionResult::Ok
+            },
+            InstructionExecutionResult::OkDefineLocal(name) => {
+                self.define_local(&name);
+                FrameExecutionResult::Ok
             }
+            InstructionExecutionResult::OkSetLocal { name, value } => {
+                self.set_local(&name, value);
+                FrameExecutionResult::Ok
+            },
+            InstructionExecutionResult::OkGetLocal(name) => {
+                let local_value = self.get_local(&name);
+                self.current_frame().stack.push(local_value);
+                FrameExecutionResult::Ok
+            },
             InstructionExecutionResult::Err(s) => FrameExecutionResult::Err(s),
         }
     }

@@ -74,3 +74,39 @@ fn it_can_return() {
     assert_eq!(state.frames.len(), 1);
     assert_eq!(state.frames[0].stack, vec![Object::Integer(4), Object::Integer(3)]);
 }
+
+#[test]
+fn it_can_have_locals() {
+    let mut comp_state = ComponentIntermediateState::default();
+
+    let function = Arc::new(Function {
+        parameters: vec![],
+        body: vec![
+            Instruction::DefineLocal("a".into()),
+            Instruction::DefineLocal("b".into()),
+
+            Instruction::Push(Object::Integer(3)),
+            Instruction::Push(Object::Integer(5)),
+            Instruction::SetLocal("a".into()),
+            Instruction::SetLocal("b".into()),
+
+            Instruction::GetLocal("a".into()),
+            Instruction::GetLocal("a".into()),
+            Instruction::GetLocal("b".into()),
+
+            Instruction::Halt,
+        ]
+    });
+
+    let mut state = Interpreter::default();
+    state.frames.push(InterpreterFrame::new(function));
+
+    assert_eq!(state.execute_until_done(&mut comp_state), InterpreterExecutionResult::Halt);
+
+    assert_eq!(state.frames.len(), 1);
+    assert_eq!(state.frames[0].stack, vec![
+        Object::Integer(5),
+        Object::Integer(5),
+        Object::Integer(3),
+    ]);
+}
