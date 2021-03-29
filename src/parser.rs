@@ -17,6 +17,8 @@ pub enum Node {
     Sleep(Box<Node>),
     Dump(Box<Node>),
     Return(Box<Node>),
+    LocalVariableDefinition { name: String, value: Option<Box<Node>> },
+    LocalVariableAssignment { name: String, value: Box<Node> },
 
     PinDefinition(String),
     VariableDefinition(String),
@@ -141,8 +143,17 @@ pub fn script_block<'a>() -> Parser<'a, u8, Node> {
 }
 
 pub fn script_statement<'a>() -> Parser<'a, u8, Node> {
-    ((script_dump_statement() | script_sleep_statement() | pin_assignment() | script_expression())
-        + space() + semi()).map(|((e, _), _)| e)
+    (
+        (
+            script_dump_statement()
+            | script_sleep_statement()
+            | pin_assignment()
+            | local_variable_definition_statement()
+            | local_variable_assignment_statement()
+            | script_expression()
+        )
+        + space() + semi()
+    ).map(|((e, _), _)| e)
 }
 
 pub fn script_expression<'a>() -> Parser<'a, u8, Node> {
@@ -165,6 +176,27 @@ pub fn script_sleep_statement<'a>() -> Parser<'a, u8, Node> {
 pub fn script_dump_statement<'a>() -> Parser<'a, u8, Node> {
     (seq(b"_dump") + space() + lparen() + space() + script_expression() + space() + rparen())
         .map(|(((_, e), _), _)| Dump(Box::new(e)))
+}
+
+pub fn local_variable_definition_statement<'a>() -> Parser<'a, u8, Node> {
+    (
+        seq(b"var") + must_space() + raw_identifier() +
+        (
+            space() + sym(b'=') + space() + script_expression()
+        ).map(|(_, e)| e).opt()
+    )
+        .map(|((_, n), v)| LocalVariableDefinition {
+            name: n,
+            value: v.map(Box::new),
+        })
+}
+
+pub fn local_variable_assignment_statement<'a>() -> Parser<'a, u8, Node> {
+    (raw_identifier() + space() + sym(b'=') + space() + script_expression())
+        .map(|((((n, _), _), _), v)| LocalVariableAssignment {
+            name: n,
+            value: Box::new(v),
+        })
 }
 
 pub fn component_instantiation<'a>() -> Parser<'a, u8, Node> {
