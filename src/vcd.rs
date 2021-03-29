@@ -1,3 +1,5 @@
+use m::ConnectedComponents;
+
 use crate::model as m;
 use crate::logic as l;
 
@@ -45,17 +47,14 @@ impl VcdGenerator {
 
     pub fn step(&mut self, model: &m::Model, modifications: &Vec<m::ComponentStateModification>) {
         self.add(format!("#{}", model.time_elapsed));
-        for modification in modifications {
-            match modification.description {
-                m::ComponentStateModificationDescription::Pin { idx: pin_idx, value } => {
-                    self.add(format!(
-                        "{}{}",
-                        self.logic_to_symbol(value),
-                        self.to_var_identifier(modification.component_idx, pin_idx)
-                    ))
-                }
-
-                _ => unimplemented!()
+        for (component_idx, component) in model.components().iter().enumerate() {
+            for (pin_idx, pin) in component.pins.iter().enumerate() {
+                let value = model.pin_value(&m::PinConnection { component_idx, pin_idx });
+                self.add(format!(
+                    "{}{}",
+                    self.logic_to_symbol(value),
+                    self.to_var_identifier(component_idx, pin_idx)
+                ))
             }
         }
     }
