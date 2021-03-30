@@ -36,6 +36,8 @@ pub enum Instruction {
     Call,
     Halt,
     GetOwnComponentIdx,
+
+    Add,
     
     // Requires the following on the stack (starting at the top, i.e. pushed last):
     //   - Suspension time
@@ -176,7 +178,15 @@ impl InterpreterFrame {
                 InstructionExecutionResult::Ok
             }
 
+            Instruction::Add => {
+                let a = self.pop_integer();
+                let b = self.pop_integer();
+                self.stack.push(Object::Integer(a + b));
+                InstructionExecutionResult::Ok
+            }
+
             Instruction::Halt => InstructionExecutionResult::OkHalt,
+
             Instruction::SuspendSleep => InstructionExecutionResult::OkSuspend(
                 SuspensionMode::Sleep(self.pop_integer() as u64)
             ),

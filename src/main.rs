@@ -4,6 +4,9 @@
 use std::{error::Error, fs::File, path::PathBuf, io::prelude::*};
 use structopt::StructOpt;
 
+#[macro_use]
+extern crate pest_derive;
+
 mod logic;
 mod model;
 mod script_engine;

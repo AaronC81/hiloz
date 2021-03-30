@@ -6,10 +6,14 @@ use crate::parser::*;
 use crate::logic::*;
 use super::utils;
 
+fn parse_block(input: &str) -> Node {
+    parse_rule(input, Rule::statement_block).unwrap()
+}
+
 #[test]
 fn it_compiles_a_blank_body_to_halt() {
     assert_eq!(
-        compile_script(&script_block().parse(b"{}").unwrap(), None, None),
+        compile_script(&parse_block("{}"), None, None),
         Ok(vec![Instruction::Halt])
     );
 }
@@ -19,10 +23,10 @@ fn it_compiles_pin_assignments() {
     let model = utils::create_model_with_scripts(vec![vec![], vec![]]);
 
     assert_eq!(
-        compile_script(&script_block().parse(b"{
+        compile_script(&parse_block("{
             pin <- H;
             pin <- L;
-        }").unwrap(), Some(&model), Some(&model.component_definitions[1])),
+        }"), Some(&model), Some(&model.component_definitions[1])),
         Ok(vec![
             Instruction::Push(LogicValue(Value::High)),
             Instruction::Push(Integer(0)),
@@ -40,9 +44,9 @@ fn it_compiles_pin_assignments() {
 
     // Test when named pin doesn't exist
     assert!(matches!(
-        compile_script(&script_block().parse(b"{
+        compile_script(&parse_block("{
             pin_that_does_not_exist <- H;
-        }").unwrap(), Some(&model), Some(&model.component_definitions[1])),
+        }"), Some(&model), Some(&model.component_definitions[1])),
         Err(_)
     ));
 }

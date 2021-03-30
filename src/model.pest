@@ -1,0 +1,52 @@
+alpha = @{ 'a'..'z' | 'A'..'Z' }
+digit = @{ '0'..'9' }
+
+integer = @{ "-"? ~ digit+ }
+identifier = @{ (alpha | "_") ~ (alpha | digit | "_")* }
+logic_value = @{ "H" | "L" | "X" }
+
+accessor = { identifier ~ws~ "." ~ws~ identifier }
+
+pin_definition = ${ "pin" ~mws~ identifier ~ws~ ";" }
+connect_definition = {  "connect" ~ws~ "(" ~ws~ argument_list ~ws~ ")" ~ws~ ";" }
+script_definition = { "script" ~ws~ statement_block }
+component_definition = ${
+    "define" ~mws~ "component" ~mws~ identifier
+    ~ws~ "{" ~ws~ ((pin_definition | script_definition) ~ws)* ~ "}"
+}
+component_instantiation = ${
+    "component" ~mws~ identifier ~ws~ "="
+    // TODO: constructor parameters
+    ~ws~ identifier ~ws~ "(" ~ws~ ")" ~ws~ ";"
+}
+
+argument_list = { (expression ~ws~ ("," ~ws~ argument_list)?)? }
+
+statement = {
+    (
+        local_variable_definition_statement
+        | local_variable_assignment_statement
+        | pin_assignment
+        | dump_statement
+        | sleep_statement
+        | expression
+    )
+    ~ws~ ";"
+}
+expression = { logic_value | accessor | integer | identifier }
+pin_assignment = { identifier ~ws~ "<-" ~ws~ expression }
+sleep_statement =  { "sleep" ~ws~ "(" ~ws~ expression ~ws~ ")" }
+dump_statement =  { "_dump" ~ws~ "(" ~ws~ expression ~ws~ ")" }
+local_variable_definition_statement = { "var" ~mws~ identifier ~ws~ ("=" ~ws~ expression ~ws)? }
+local_variable_assignment_statement = { identifier ~ws~ "=" ~ws~ expression }
+statement_block = { "{" ~ (ws~ statement ~ws)* ~ws~ "}" }
+
+top = {
+    SOI ~
+    (ws~ (component_definition | component_instantiation | connect_definition))*
+    ~ws~ EOI
+}
+
+one_ws = _{ " " | "\t" | "\r" | "\n" }
+ws = _{ one_ws* } 
+mws = _{ one_ws+ }

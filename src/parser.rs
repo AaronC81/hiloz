@@ -1,9 +1,7 @@
 use super::script_engine as se;
 use super::logic;
 
-use pom::parser::*;
-use pom::char_class::*;
-use pom::parser::Parser;
+use pest::{Parser, iterators::Pair};
 
 use std::str::{FromStr, from_utf8};
 use std::error::Error;
@@ -32,191 +30,164 @@ pub enum Node {
     Pull { component: Vec<Node>, pull: logic::Value },
 
     Body(Vec<Node>),
+    NodeList(Vec<Node>),
+
+    EndOfInput,
 }
 
 use Node::*;
-use se::Object::*;
+use se::Object::{*, self};
 
-fn space<'a>() -> Parser<'a, u8, ()> { is_a(multispace).repeat(0..).discard() }
-fn must_space<'a>() -> Parser<'a, u8, ()> { is_a(multispace).repeat(1..).discard().name("whitespace") }
-fn semi<'a>() -> Parser<'a, u8, ()> { (space() + sym(b';') + space()).discard().name("semicolon") }
-fn lbrace<'a>() -> Parser<'a, u8, ()> { (space() + sym(b'{') + space()).discard().name("left brace") }
-fn rbrace<'a>() -> Parser<'a, u8, ()> { (space() + sym(b'}') + space()).discard().name("right brace") }
-fn lparen<'a>() -> Parser<'a, u8, ()> { (space() + sym(b'(') + space()).discard().name("left parenthesis") }
-fn rparen<'a>() -> Parser<'a, u8, ()> { (space() + sym(b')') + space()).discard().name("right parenthesis") }
+#[derive(Parser)]
+#[grammar="model.pest"]
+struct ModelParser;
 
-pub fn raw_integer<'a>() -> Parser<'a, u8, i64> {
-    (sym(b'-').opt() + is_a(digit).repeat(1..))
-        .collect()
-        .convert(from_utf8)
-        .convert(i64::from_str)
+impl ModelParser {
+    fn pest_to_node(pest: Pair<Rule>) -> Result<Node, Box<dyn Error>> {
+        match pest.as_rule() {
+            Rule::integer =>
+                Ok(Constant(Integer(i64::from_str(pest.as_str())?))),
+            Rule::identifier =>
+                Ok(Identifier(pest.as_str().into())),
+            Rule::logic_value =>
+                Ok(Constant(LogicValue(match pest.as_str() {
+                    "H" => logic::Value::High,
+                    "L" => logic::Value::Low,
+                    "X" => logic::Value::Unknown,
+                    _ => unreachable!(),
+                }))),
+
+            Rule::accessor => {
+                let mut inner = pest.into_inner();
+                let target = Self::pest_to_node(inner.next().unwrap())?;
+                let name = Self::pest_to_node(inner.next().unwrap())?;
+
+                Ok(Accessor {
+                    target: Box::new(target),
+                    name: Box::new(name),
+                })
+            },
+
+            Rule::pin_definition =>
+                Ok(PinDefinition(pest.into_inner().next().unwrap().as_str().into())),
+            Rule::connect_definition => {
+                let node_list = Self::pest_to_node(pest.into_inner().next().unwrap())?;
+                
+                if let NodeList(nodes) = node_list {
+                    Ok(Connect(nodes))
+                } else {
+                    unreachable!();
+                }
+            },
+            Rule::script_definition =>
+                Ok(ScriptDefinition(Box::new(
+                    Self::pest_to_node(pest.into_inner().next().unwrap())?
+                ))),
+            Rule::component_definition => {
+                let mut inner = pest.into_inner();
+                let name = inner.next().unwrap().as_str();
+                let mut body = vec![];
+                while let Some(node) = inner.next() {
+                    body.push(Self::pest_to_node(node)?);
+                }
+                Ok(ComponentDefinition {
+                    name: name.into(),
+                    body: Box::new(Body(body)),
+                })
+            },
+            Rule::component_instantiation => {
+                let mut inner = pest.into_inner();
+                let instance_name = inner.next().unwrap().as_str().into();
+                let component_name = inner.next().unwrap().as_str().into();
+                Ok(ComponentInstantiation {
+                    instance_name,
+                    component_name,
+                    arguments: vec![],
+                })
+            }
+
+            Rule::argument_list => {
+                let mut inner = pest.into_inner();
+                let mut nodes = vec![];
+
+                while let Some(head_pair) = inner.next() {
+                    nodes.push(Self::pest_to_node(head_pair)?);
+
+                    // Set inner to the iterator for the child argument_list, if there is one
+                    if let Some(pair) = inner.next() {
+                        inner = pair.into_inner();
+                    } else {
+                        break;
+                    }
+                }
+
+                Ok(NodeList(nodes))
+            },
+
+            Rule::statement | Rule::expression =>
+                Self::pest_to_node(pest.into_inner().next().unwrap()),
+            Rule::pin_assignment => {
+                let mut inner = pest.into_inner();
+                let target = Self::pest_to_node(inner.next().unwrap())?;
+                let value = Self::pest_to_node(inner.next().unwrap())?;
+                Ok(PinAssignment {
+                    target: Box::new(target),
+                    value: Box::new(value),
+                })
+            },
+            Rule::sleep_statement =>
+                Ok(Sleep(Box::new(
+                    Self::pest_to_node(pest.into_inner().next().unwrap())?
+                ))),
+            Rule::dump_statement =>
+                Ok(Dump(Box::new(
+                    Self::pest_to_node(pest.into_inner().next().unwrap())?
+                ))),
+            Rule::local_variable_definition_statement => {
+                let mut inner = pest.into_inner();
+                let name = inner.next().unwrap().as_str();
+                let value = if let Some(pair) = inner.next() {
+                    Some(Box::new(Self::pest_to_node(pair)?))
+                } else {
+                    None
+                };
+                Ok(LocalVariableDefinition {
+                    name: name.into(),
+                    value,
+                })
+            },
+            Rule::local_variable_assignment_statement => {
+                let mut inner = pest.into_inner();
+                let name = inner.next().unwrap().as_str();
+                let value = Self::pest_to_node(inner.next().unwrap())?;
+                Ok(LocalVariableAssignment {
+                    name: name.into(),
+                    value: Box::new(value),  
+                })
+            },
+            Rule::statement_block | Rule::top =>
+                Ok(Body(
+                    pest.into_inner()
+                        .map(|x| Self::pest_to_node(x))
+                        .collect::<Result<Vec<_>, _>>()?
+                )),
+
+            Rule::EOI => Ok(EndOfInput),
+
+            _ => unreachable!("unexpected rule {:?}", pest.as_rule()),
+        }
+    }
 }
 
-pub fn integer<'a>() -> Parser<'a, u8, Node> {
-    raw_integer().map(|s| Constant(Integer(s)))
+pub fn parse_rule(input: &str, rule: Rule) -> Result<Node, Box<dyn Error>> {
+    let mut pairs = ModelParser::parse(rule, input)?;
+    ModelParser::pest_to_node(pairs.next().unwrap())
 }
 
-pub fn raw_identifier<'a>() -> Parser<'a, u8, String> {
-    // TODO: reject keywords or logic value literals
-    ((is_a(alpha) | sym(b'_')) + (is_a(alpha) | is_a(digit) | sym(b'_')).repeat(0..))
-        .collect()
-        .convert(from_utf8)
-        .map(Into::into)
-}
-
-pub fn identifier<'a>() -> Parser<'a, u8, Node> {
-    raw_identifier().map(|s| Identifier(s.into()))
-}
-
-pub fn accessor<'a>() -> Parser<'a, u8, Node> {
-    (identifier() + space() + sym(b'.') + space() + identifier())
-        .map(|((((t, _), _), _), v)| Accessor {
-            target: Box::new(t),
-            name: Box::new(v),
-        })
-}
-
-pub fn argument_list<'a>() -> Parser<'a, u8, Vec<Node>> {
-    (script_expression() + space()
-        + (sym(b',') + space() + script_expression() + space()).repeat(0..))
-        .opt()
-        .map(|x| match x {
-            Some(((first, _), others)) => [
-                vec![first],
-                others.into_iter().map(|((_, node), _)| node).collect(),
-            ].concat(),
-            None => vec![],
-        })
-}
-
-pub fn logic_value<'a>() -> Parser<'a, u8, Node> {
-    sym(b'H').map(|_| Constant(LogicValue(logic::Value::High)))
-    | sym(b'L').map(|_| Constant(LogicValue(logic::Value::Low)))
-    | sym(b'X').map(|_| Constant(LogicValue(logic::Value::Unknown)))
-}
-
-pub fn pin_definition<'a>() -> Parser<'a, u8, Node> {
-    (seq(b"pin") + must_space() + raw_identifier() + semi())
-        .map(|((_, id), _)| PinDefinition(id))
-}
-
-pub fn script_definition<'a>() -> Parser<'a, u8, Node> {
-    (seq(b"script") + space() + script_block())
-        .map(|(_, body)| ScriptDefinition(Box::new(body)))
-}
-
-pub fn connect_definition<'a>() -> Parser<'a, u8, Node> {
-    (seq(b"connect") + space() + lparen() + space() + argument_list() + space() + rparen() + semi())
-        .map(|((((_, v), _), _), _)| Connect(v))
-}
-
-pub fn component_definition<'a>() -> Parser<'a, u8, Node> {
-    (
-        seq(b"define") + must_space() + seq(b"component") + must_space()
-        + raw_identifier() + space()
-        + component_definition_body()
-    )
-        .map(|(((_, name), _,), body)| ComponentDefinition {
-            name,
-            body: Box::new(body),
-        })
-}
-
-pub fn component_definition_body<'a>() -> Parser<'a, u8, Node> {
-    (
-        lbrace()
-        + (pin_definition() | script_definition()).repeat(0..)
-        + rbrace()
-    )
-        .map(|((_, defs), _)| Node::Body(defs))
-}
-
-pub fn script_block<'a>() -> Parser<'a, u8, Node> {
-    (
-        lbrace()
-        + space()
-        + script_statement().repeat(0..)
-        + space()
-        + rbrace()
-    )
-        .map(|(((_, e), _), _)| Body(e))
-}
-
-pub fn script_statement<'a>() -> Parser<'a, u8, Node> {
-    (
-        (
-            script_dump_statement()
-            | script_sleep_statement()
-            | pin_assignment()
-            | local_variable_definition_statement()
-            | local_variable_assignment_statement()
-            | script_expression()
-        )
-        + space() + semi()
-    ).map(|((e, _), _)| e)
-}
-
-pub fn script_expression<'a>() -> Parser<'a, u8, Node> {
-    accessor() | integer() | logic_value() | identifier()
-}
-
-pub fn pin_assignment<'a>() -> Parser<'a, u8, Node> {
-    (identifier() + space() + seq(b"<-") + space() + script_expression())
-        .map(|((((i, _), _), _), e)| PinAssignment {
-            target: Box::new(i),
-            value: Box::new(e),
-        })
-}
-
-pub fn script_sleep_statement<'a>() -> Parser<'a, u8, Node> {
-    (seq(b"sleep") + space() + lparen() + space() + script_expression() + space() + rparen())
-        .map(|(((_, e), _), _)| Sleep(Box::new(e)))
-}
-
-pub fn script_dump_statement<'a>() -> Parser<'a, u8, Node> {
-    (seq(b"_dump") + space() + lparen() + space() + script_expression() + space() + rparen())
-        .map(|(((_, e), _), _)| Dump(Box::new(e)))
-}
-
-pub fn local_variable_definition_statement<'a>() -> Parser<'a, u8, Node> {
-    (
-        seq(b"var") + must_space() + raw_identifier() +
-        (
-            space() + sym(b'=') + space() + script_expression()
-        ).map(|(_, e)| e).opt()
-    )
-        .map(|((_, n), v)| LocalVariableDefinition {
-            name: n,
-            value: v.map(Box::new),
-        })
-}
-
-pub fn local_variable_assignment_statement<'a>() -> Parser<'a, u8, Node> {
-    (raw_identifier() + space() + sym(b'=') + space() + script_expression())
-        .map(|((((n, _), _), _), v)| LocalVariableAssignment {
-            name: n,
-            value: Box::new(v),
-        })
-}
-
-pub fn component_instantiation<'a>() -> Parser<'a, u8, Node> {
-    (
-        seq(b"component") + must_space() + raw_identifier()
-        + space() + sym(b'=') + space() + raw_identifier() + space()
-        // TODO: constructor parameters
-        + lparen() + space() + rparen()
-        + semi()
-    // we lisp now
-    ).map(|((((((((((_, i), _), _), _), c), _), _), _), _), _)| ComponentInstantiation {
-        instance_name: i,
-        component_name: c,
-        arguments: vec![],
-    })
-}
-
-pub fn top_level<'a>() -> Parser<'a, u8, Node> {
-    (((space() + (component_definition() | component_instantiation() | connect_definition()) + space())
-        .map(|((_, c), _)| c)
-        .repeat(0..)) + end())
-        .map(|(x, _)| Body(x))
+pub fn parse(model: &str) -> Result<Node, Box<dyn Error>> {
+    Ok(Body(
+        ModelParser::parse(Rule::top, model)?
+            .map(|n| ModelParser::pest_to_node(n))
+            .collect::<Result<Vec<_>, _>>()?
+    ))
 }

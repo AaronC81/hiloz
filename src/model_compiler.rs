@@ -96,6 +96,92 @@ fn compile_connection(
     }).collect()
 }
 
+fn compile_model_(node: &p::Node, model: &mut m::Model) -> Result<(), Box<dyn Error>> {
+    match node {
+        p::Node::Body(nodes) => {
+            for child in nodes {
+                compile_model_(child, model)?;
+            }
+        }
+
+        p::Node::ComponentDefinition { name, body } => {
+            let mut component_definition = m::ComponentDefinition {
+                name: name.clone(),
+                constructor: None,
+                functions: vec![],
+                pins: vec![],
+                script: None,
+                variables: vec![],
+            };
+
+            // The index of a new component will be the length of the
+            // current list
+            let component_idx = model.component_definitions.len();
+
+            compile_component_definition(
+                body, &model, component_idx, &mut component_definition
+            )?;
+    
+            model.component_definitions.push(Arc::new(component_definition));
+        }
+
+        p::Node::ComponentInstantiation { instance_name, component_name, .. } => {
+            let definition = model.component_definitions
+                .iter()
+                .find(|def| &def.name == component_name);
+
+            let definition = if let Some(x) = definition {
+                x
+            } else {
+                return Err(ModelCompilerError::new(
+                    format!("no component named {}", component_name)
+                ).into());
+            };
+
+            // TODO: Might be good to make a Model::instantiate_component(&mut self, ...) to do all this
+            model.components.push(m::Component {
+                instance_name: instance_name.clone(),
+                definition: definition.clone(),
+                constructor_arguments: vec![],
+                pins: definition.pins.iter().map(|pin_def| m::Pin {
+                    definition: pin_def.clone(),
+                    pull: l::Value::Unknown,
+                    value: l::Value::Unknown,
+                }).collect(),
+                variables: vec![],
+                dumps: vec![],
+            });
+
+            if let Some(function) = definition.script.clone() {
+                model.interpreters.push(se::Interpreter {
+                    component_idx: Some(model.components.len() - 1),
+                    frames: vec![
+                        se::InterpreterFrame {
+                            arguments: vec![],
+                            function,
+                            ip: 0,
+                            locals: Default::default(),
+                            stack: vec![],
+                        }
+                    ],
+                    status: se::InterpreterStatus::Normal,
+                });
+            }
+        }
+
+        p::Node::Connect(nodes) => {
+            let pins = compile_connection(nodes, &model)?;
+            model.connect_pins(&pins[..]);
+        }
+
+        p::Node::EndOfInput => (),
+
+        _ => unimplemented!("compile model child {:?}", node),
+    };
+
+    Ok(())
+}
+
 pub fn compile_model(node: &p::Node) -> Result<m::Model, Box<dyn Error>> {
     let mut model = m::Model {
         component_definitions: vec![],
@@ -107,86 +193,6 @@ pub fn compile_model(node: &p::Node) -> Result<m::Model, Box<dyn Error>> {
         time_elapsed: 0,
     };
 
-    if let p::Node::Body(b) = node {
-        for n in b {
-            match n {
-                p::Node::ComponentDefinition { name, body } => {
-                    let mut component_definition = m::ComponentDefinition {
-                        name: name.clone(),
-                        constructor: None,
-                        functions: vec![],
-                        pins: vec![],
-                        script: None,
-                        variables: vec![],
-                    };
-
-                    // The index of a new component will be the length of the
-                    // current list
-                    let component_idx = model.component_definitions.len();
-
-                    compile_component_definition(
-                        body, &model, component_idx, &mut component_definition
-                    )?;
-            
-                    model.component_definitions.push(Arc::new(component_definition));
-                }
-
-
-                p::Node::ComponentInstantiation { instance_name, component_name, .. } => {
-                    let definition = model.component_definitions
-                        .iter()
-                        .find(|def| &def.name == component_name);
-
-                    let definition = if let Some(x) = definition {
-                        x
-                    } else {
-                        return Err(ModelCompilerError::new(
-                            format!("no component named {}", component_name)
-                        ).into());
-                    };
-
-                    // TODO: Might be good to make a Model::instantiate_component(&mut self, ...) to do all this
-                    model.components.push(m::Component {
-                        instance_name: instance_name.clone(),
-                        definition: definition.clone(),
-                        constructor_arguments: vec![],
-                        pins: definition.pins.iter().map(|pin_def| m::Pin {
-                            definition: pin_def.clone(),
-                            pull: l::Value::Unknown,
-                            value: l::Value::Unknown,
-                        }).collect(),
-                        variables: vec![],
-                        dumps: vec![],
-                    });
-
-                    if let Some(function) = definition.script.clone() {
-                        model.interpreters.push(se::Interpreter {
-                            component_idx: Some(model.components.len() - 1),
-                            frames: vec![
-                                se::InterpreterFrame {
-                                    arguments: vec![],
-                                    function,
-                                    ip: 0,
-                                    locals: Default::default(),
-                                    stack: vec![],
-                                }
-                            ],
-                            status: se::InterpreterStatus::Normal,
-                        });
-                    }
-                }
-
-                p::Node::Connect(nodes) => {
-                    let pins = compile_connection(nodes, &model)?;
-                    model.connect_pins(&pins[..]);
-                }
-
-                _ => unimplemented!("compile model child {:?}", n),
-            };
-        }
-    } else {
-        return Err("expected body node for model compilation".into())
-    }
-    
+    compile_model_(node, &mut model)?;    
     Ok(model)
 }

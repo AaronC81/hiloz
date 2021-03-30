@@ -297,7 +297,7 @@ impl Model {
     }
 
     pub fn compile(str: String) -> Result<Model, Box<dyn std::error::Error>> {
-        let parsed = p::top_level().parse(str.as_bytes())?;
+        let parsed = p::parse(&str)?;
         mc::compile_model(&parsed)
     }
 }

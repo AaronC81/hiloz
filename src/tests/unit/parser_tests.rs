@@ -5,19 +5,25 @@ use crate::logic::*;
 
 #[test]
 fn it_parses_integers() {
-    assert_eq!(integer().parse(b"328").unwrap(), Constant(Integer(328)));
-    assert_eq!(integer().parse(b"0").unwrap(), Constant(Integer(0)));
-    assert_eq!(integer().parse(b"-123").unwrap(), Constant(Integer(-123)));
+    assert_eq!(parse_rule("328", Rule::integer).unwrap(), Constant(Integer(328)));
+    assert_eq!(parse_rule("0", Rule::integer).unwrap(), Constant(Integer(0)));
+    assert_eq!(parse_rule("-123", Rule::integer).unwrap(), Constant(Integer(-123)));
+}
+
+#[test]
+fn it_parses_identifiers() {
+    assert_eq!(parse_rule("a", Rule::identifier).unwrap(), Identifier("a".into()));
+    assert_eq!(parse_rule("foo", Rule::identifier).unwrap(), Identifier("foo".into()));
 }
 
 #[test]
 fn it_parses_pin_definitions() {
-    assert_eq!(pin_definition().parse(b"pin a;").unwrap(), PinDefinition("a".into()));
+    assert_eq!(parse_rule("pin a;", Rule::pin_definition).unwrap(), PinDefinition("a".into()));
 }
 
 #[test]
 fn it_parses_component_definitions() {
-    assert_eq!(component_definition().parse(b"define component Something {
+    assert_eq!(parse_rule("define component Something {
         pin a;
         pin b;
 
@@ -28,7 +34,7 @@ fn it_parses_component_definitions() {
             sleep(1000);
         }
     }
-    ").unwrap(), ComponentDefinition {
+    ", Rule::component_definition).unwrap(), ComponentDefinition {
         name: "Something".into(),
         body: Box::new(Body(vec![
             PinDefinition("a".into()),
@@ -53,7 +59,7 @@ fn it_parses_component_definitions() {
 #[test]
 fn it_parses_connections() {
     assert_eq!(
-        connect_definition().parse(b"connect(a.b, c.d);").unwrap(),
+        parse_rule("connect(a.b, c.d);", Rule::connect_definition).unwrap(),
         Connect(vec![
             Accessor {
                 target: Box::new(Identifier("a".into())),
@@ -66,3 +72,44 @@ fn it_parses_connections() {
         ]),
     );
 }
+
+// #[test]
+// fn it_parses_complex_expressions() {
+//     assert_eq!(
+//         parse_rule("a.b + (3 / 4 / 1 + 1 + a.c / 4) * (3 + 2) + 5", Rule::expression).unwrap(),
+//         Add(
+//             Box::new(Add(
+//                 Box::new(Accessor {
+//                     target: Box::new(Identifier("a".into())),
+//                     name: Box::new(Identifier("b".into())),
+//                 }),
+//                 Box::new(Multiply(
+//                     Box::new(Add(
+//                         Box::new(Add(
+//                             Box::new(Divide(
+//                                 Box::new(Divide(
+//                                     Box::new(Constant(Integer(3))),
+//                                     Box::new(Constant(Integer(4))),
+//                                 )),
+//                                 Box::new(Constant(Integer(1))),
+//                             )),
+//                             Box::new(Constant(Integer(1))),
+//                         )),
+//                         Box::new(Divide(
+//                             Box::new(Accessor {
+//                                 target: Box::new(Identifier("a".into())),
+//                                 name: Box::new(Identifier("b".into())),
+//                             }),
+//                             Box::new(Constant(Integer(4))),
+//                         )),
+//                     )),
+//                     Box::new(Add(
+//                         Box::new(Constant(Integer(3))),
+//                         Box::new(Constant(Integer(2))),
+//                     )),
+//                 ))
+//             )),
+//             Box::new(Constant(Integer(5)))
+//         )
+//     )
+// }
