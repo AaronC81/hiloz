@@ -38,6 +38,9 @@ pub enum Instruction {
     GetOwnComponentIdx,
 
     Add,
+    Subtract,
+    Multiply,
+    Divide,
     
     // Requires the following on the stack (starting at the top, i.e. pushed last):
     //   - Suspension time
@@ -183,7 +186,25 @@ impl InterpreterFrame {
                 let b = self.pop_integer();
                 self.stack.push(Object::Integer(a + b));
                 InstructionExecutionResult::Ok
-            }
+            },
+            Instruction::Subtract => {
+                let a = self.pop_integer();
+                let b = self.pop_integer();
+                self.stack.push(Object::Integer(a - b));
+                InstructionExecutionResult::Ok
+            },
+            Instruction::Multiply => {
+                let a = self.pop_integer();
+                let b = self.pop_integer();
+                self.stack.push(Object::Integer(a * b));
+                InstructionExecutionResult::Ok
+            },
+            Instruction::Divide => {
+                let a = self.pop_integer();
+                let b = self.pop_integer();
+                self.stack.push(Object::Integer(a / b));
+                InstructionExecutionResult::Ok
+            },
 
             Instruction::Halt => InstructionExecutionResult::OkHalt,
 

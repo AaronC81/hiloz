@@ -1,5 +1,6 @@
 #![feature(bindings_after_at)]
 #![feature(box_patterns)]
+#![feature(or_patterns)]
 
 use std::{error::Error, fs::File, path::PathBuf, io::prelude::*};
 use structopt::StructOpt;

@@ -155,6 +155,35 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
                 ]
             ].concat())
         }
+        
+        p::Node::Add(box a, box b) => {
+            Ok([
+                compile(b, context)?,
+                compile(a, context)?,
+                vec![se::Instruction::Add],
+            ].concat())
+        }
+        p::Node::Subtract(box a, box b) => {
+            Ok([
+                compile(b, context)?,
+                compile(a, context)?,
+                vec![se::Instruction::Subtract],
+            ].concat())
+        }
+        p::Node::Multiply(box a, box b) => {
+            Ok([
+                compile(b, context)?,
+                compile(a, context)?,
+                vec![se::Instruction::Multiply],
+            ].concat())
+        }
+        p::Node::Divide(box a, box b) => {
+            Ok([
+                compile(b, context)?,
+                compile(a, context)?,
+                vec![se::Instruction::Divide],
+            ].concat())
+        }
 
         _ => unimplemented!()
     }

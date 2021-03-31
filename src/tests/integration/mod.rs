@@ -97,3 +97,27 @@ fn simple_model_with_locals_in_script() {
         ]
     )
 }
+
+#[test]
+fn simple_model_with_arithmetic() {
+    let mut model = create_model("
+        define component Component {
+            script {
+                var a = 5;
+                _dump(a + -1);
+
+                _dump(2 * 5 - 2 * 3 - (6 / 3));
+            }
+        }
+
+        component c = Component();
+    ");
+    model.run(100000, |_, _| {});
+    assert_eq!(
+        model.components[model.component_idx(&"c".to_string()).unwrap()].dumps,
+        vec![
+            se::Object::Integer(4),
+            se::Object::Integer(2),
+        ]
+    )
+}
