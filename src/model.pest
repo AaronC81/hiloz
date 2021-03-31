@@ -33,13 +33,25 @@ statement = {
     )
     ~ws~ ";"
 }
-expression = { logic_value | accessor | integer | identifier }
 pin_assignment = { identifier ~ws~ "<-" ~ws~ expression }
 sleep_statement =  { "sleep" ~ws~ "(" ~ws~ expression ~ws~ ")" }
 dump_statement =  { "_dump" ~ws~ "(" ~ws~ expression ~ws~ ")" }
 local_variable_definition_statement = { "var" ~mws~ identifier ~ws~ ("=" ~ws~ expression ~ws)? }
 local_variable_assignment_statement = { identifier ~ws~ "=" ~ws~ expression }
 statement_block = { "{" ~ (ws~ statement ~ws)* ~ws~ "}" }
+
+expression = { binop_addsub | atom }
+
+binop_addsub = { binop_muldiv ~ (ws~ (operator_add | operator_sub) ~ws~ binop_muldiv)* }
+binop_muldiv = { binop_bot ~ (ws~ (operator_mul | operator_div) ~ws~ binop_bot)* }
+binop_bot = _{ atom }
+
+operator_add = { "+" }
+operator_sub = { "-" }
+operator_mul = { "*" }
+operator_div = { "/" }
+
+atom = _{ logic_value | accessor | integer | identifier | ("(" ~ expression ~ ")") }
 
 top = {
     SOI ~

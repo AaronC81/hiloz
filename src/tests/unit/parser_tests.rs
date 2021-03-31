@@ -73,43 +73,43 @@ fn it_parses_connections() {
     );
 }
 
-// #[test]
-// fn it_parses_complex_expressions() {
-//     assert_eq!(
-//         parse_rule("a.b + (3 / 4 / 1 + 1 + a.c / 4) * (3 + 2) + 5", Rule::expression).unwrap(),
-//         Add(
-//             Box::new(Add(
-//                 Box::new(Accessor {
-//                     target: Box::new(Identifier("a".into())),
-//                     name: Box::new(Identifier("b".into())),
-//                 }),
-//                 Box::new(Multiply(
-//                     Box::new(Add(
-//                         Box::new(Add(
-//                             Box::new(Divide(
-//                                 Box::new(Divide(
-//                                     Box::new(Constant(Integer(3))),
-//                                     Box::new(Constant(Integer(4))),
-//                                 )),
-//                                 Box::new(Constant(Integer(1))),
-//                             )),
-//                             Box::new(Constant(Integer(1))),
-//                         )),
-//                         Box::new(Divide(
-//                             Box::new(Accessor {
-//                                 target: Box::new(Identifier("a".into())),
-//                                 name: Box::new(Identifier("b".into())),
-//                             }),
-//                             Box::new(Constant(Integer(4))),
-//                         )),
-//                     )),
-//                     Box::new(Add(
-//                         Box::new(Constant(Integer(3))),
-//                         Box::new(Constant(Integer(2))),
-//                     )),
-//                 ))
-//             )),
-//             Box::new(Constant(Integer(5)))
-//         )
-//     )
-// }
+#[test]
+fn it_parses_complex_expressions() {
+    assert_eq!(
+        parse_rule("a.b + (3 / 4 / 1 + 1 + a.c / 4) * (3 + 2) + 5", Rule::expression).unwrap(),
+        Add(
+            Box::new(Add(
+                Box::new(Accessor {
+                    target: Box::new(Identifier("a".into())),
+                    name: Box::new(Identifier("b".into())),
+                }),
+                Box::new(Multiply(
+                    Box::new(Add(
+                        Box::new(Add(
+                            Box::new(Divide(
+                                Box::new(Divide(
+                                    Box::new(Constant(Integer(3))),
+                                    Box::new(Constant(Integer(4))),
+                                )),
+                                Box::new(Constant(Integer(1))),
+                            )),
+                            Box::new(Constant(Integer(1))),
+                        )),
+                        Box::new(Divide(
+                            Box::new(Accessor {
+                                target: Box::new(Identifier("a".into())),
+                                name: Box::new(Identifier("c".into())),
+                            }),
+                            Box::new(Constant(Integer(4))),
+                        )),
+                    )),
+                    Box::new(Add(
+                        Box::new(Constant(Integer(3))),
+                        Box::new(Constant(Integer(2))),
+                    )),
+                ))
+            )),
+            Box::new(Constant(Integer(5)))
+        )
+    )
+}

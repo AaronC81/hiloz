@@ -29,6 +29,11 @@ pub enum Node {
     Connect(Vec<Node>),
     Pull { component: Vec<Node>, pull: logic::Value },
 
+    Add(Box<Node>, Box<Node>),
+    Subtract(Box<Node>, Box<Node>),
+    Multiply(Box<Node>, Box<Node>),
+    Divide(Box<Node>, Box<Node>),
+
     Body(Vec<Node>),
     NodeList(Vec<Node>),
 
@@ -124,7 +129,7 @@ impl ModelParser {
                 Ok(NodeList(nodes))
             },
 
-            Rule::statement | Rule::expression =>
+            Rule::statement =>
                 Self::pest_to_node(pest.into_inner().next().unwrap()),
             Rule::pin_assignment => {
                 let mut inner = pest.into_inner();
@@ -171,6 +176,34 @@ impl ModelParser {
                         .map(|x| Self::pest_to_node(x))
                         .collect::<Result<Vec<_>, _>>()?
                 )),
+
+            Rule::expression =>
+                Self::pest_to_node(pest.into_inner().next().unwrap()),
+
+            Rule::binop_addsub | Rule::binop_muldiv => {
+                let mut inner = pest.into_inner();
+                let mut result = Self::pest_to_node(inner.next().unwrap())?;
+
+                // TODO: seems to have associativity problems
+                // on the addsub rule, the addsub eats the future binops
+                while let Some(operator) = inner.next() {
+                    let operand = Box::new(Self::pest_to_node(inner.next().unwrap())?);
+
+                    result = match operator.as_rule() {
+                        Rule::operator_add => Add(Box::new(result), operand),
+                        Rule::operator_sub => Subtract(Box::new(result), operand),
+                        Rule::operator_mul => Multiply(Box::new(result), operand),
+                        Rule::operator_div => Divide(Box::new(result), operand),
+
+                        x => unreachable!("{:?} is not a binop", x)
+                    }
+                }
+
+                Ok(result)
+            },
+
+            Rule::operator_add | Rule::operator_sub | Rule::operator_mul | Rule::operator_div =>
+                unreachable!("raw operator should not be processed"),
 
             Rule::EOI => Ok(EndOfInput),
 
