@@ -1,5 +1,5 @@
 [package]
-name = "digital-systems"
+name = "hiloz"
 version = "0.1.0"
 authors = ["Aaron Christiansen <aaronc20000@gmail.com>"]
 edition = "2018"
