@@ -24,6 +24,7 @@ argument_list = { (expression ~ws~ ("," ~ws~ argument_list)?)? }
 
 statement = {
     loop_statement
+    | if_statement
     | (
         (
             break_statement
@@ -44,6 +45,7 @@ break_statement =  { "break" }
 local_variable_definition_statement = { "var" ~mws~ identifier ~ws~ ("=" ~ws~ expression ~ws)? }
 local_variable_assignment_statement = { identifier ~ws~ "=" ~ws~ expression }
 loop_statement = { "loop" ~ws~ statement_block }
+if_statement = { "if" ~ws~ "(" ~ws~ expression ~ws~ ")" ~ws~ statement_block }
 statement_block = { "{" ~ (ws~ statement ~ws)* ~ws~ "}" }
 
 expression = { binop_addsub | atom }

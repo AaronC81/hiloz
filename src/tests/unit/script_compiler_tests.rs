@@ -102,3 +102,38 @@ fn it_compiles_break_statements() {
         ])
     );
 }
+
+#[test]
+fn it_compiles_if_statements() {
+    let model = utils::create_model_with_scripts(vec![vec![]]);
+
+    assert_eq!(
+        compile_script(&parse_block("{
+            if (1) {
+                _dump(1);
+                _dump(2);
+                _dump(3);
+            }
+            _dump(0);
+        }"), Some(&model), Some(&model.component_definitions[0])),
+        Ok(vec![
+            Instruction::Push(Integer(1)),
+            Instruction::LogicNot,
+            Instruction::JumpConditional(7),
+
+            Instruction::Push(Integer(1)),
+            Instruction::Dump,
+
+            Instruction::Push(Integer(2)),
+            Instruction::Dump,
+
+            Instruction::Push(Integer(3)),
+            Instruction::Dump,
+
+            Instruction::Push(Integer(0)),
+            Instruction::Dump,
+
+            Instruction::Halt
+        ])
+    );
+}

@@ -275,8 +275,8 @@ impl InterpreterFrame {
             }
 
             Instruction::LogicNot => {
-                let value = self.pop_logic_value();
-                self.stack.push(Object::LogicValue(!value));
+                let value = self.stack.pop().expect("empty stack");
+                self.stack.push(Object::Boolean(!value.is_truthy()));
                 InstructionExecutionResult::Ok
             }
 

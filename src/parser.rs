@@ -35,6 +35,7 @@ pub enum Node {
     Divide(Box<Node>, Box<Node>),
 
     Loop(Box<Node>),
+    If { condition: Box<Node>, body: Box<Node> },
     Break,
 
     Body(Vec<Node>),
@@ -211,6 +212,15 @@ impl ModelParser {
                 Ok(Loop(Box::new(
                     Self::pest_to_node(pest.into_inner().next().unwrap())?
                 ))),
+            Rule::if_statement => {
+                let mut inner = pest.into_inner();
+                let condition = Self::pest_to_node(inner.next().unwrap())?;
+                let body = Self::pest_to_node(inner.next().unwrap())?;
+                Ok(If {
+                    condition: Box::new(condition),
+                    body: Box::new(body),
+                })
+            }
 
             Rule::operator_add | Rule::operator_sub | Rule::operator_mul | Rule::operator_div =>
                 unreachable!("raw operator should not be processed"),

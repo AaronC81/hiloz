@@ -228,6 +228,22 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
                 vec![se::Instruction::Jump(jump_distance)],
             ].concat())
         }
+        p::Node::If { condition: box condition, body: box body } => {
+            // We don't implement "else" yet, so all we need to do is jump over
+            // the body if the condition is not met
+            let condition_instructions = compile(condition, context)?;
+            let body_instructions = compile(body, context)?;
+            let jump_distance = (body_instructions.len() as i64) + 1;
+
+            Ok([
+                condition_instructions,
+                vec![
+                    se::Instruction::LogicNot,
+                    se::Instruction::JumpConditional(jump_distance),
+                ],
+                body_instructions,
+            ].concat())
+        }
         p::Node::Break => {
             Ok(vec![se::Instruction::MagicBreak])
         }
