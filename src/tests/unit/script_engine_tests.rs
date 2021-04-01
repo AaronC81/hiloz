@@ -1,4 +1,5 @@
 use crate::{model::ComponentIntermediateState, model::ComponentStateModificationDescription, script_engine::*};
+use crate::logic::Value;
 
 use std::sync::Arc;
 
@@ -10,7 +11,7 @@ fn it_can_work_with_the_stack() {
         parameters: vec![],
         body: vec![
             Instruction::Push(Object::Integer(3)),
-            Instruction::Push(Object::Boolean(true)),
+            Instruction::Push(Object::LogicValue(Value::High)),
             Instruction::Pop,
             Instruction::Push(Object::Null),
             Instruction::Pop,
@@ -24,7 +25,7 @@ fn it_can_work_with_the_stack() {
     assert_eq!(frame.stack, vec![Object::Integer(3)]);
 
     assert_eq!(frame.execute_one_instruction(&mut comp_state), InstructionExecutionResult::Ok);
-    assert_eq!(frame.stack, vec![Object::Integer(3), Object::Boolean(true)]);
+    assert_eq!(frame.stack, vec![Object::Integer(3), Object::LogicValue(Value::High)]);
 
     assert_eq!(frame.execute_one_instruction(&mut comp_state), InstructionExecutionResult::Ok);
     assert_eq!(frame.stack, vec![Object::Integer(3)]);

@@ -16,3 +16,13 @@ impl std::ops::Not for Value {
         }
     }
 }
+
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        if b {
+            Self::High
+        } else {
+            Self::Low
+        }
+    }
+}

@@ -14,7 +14,6 @@ pub enum Object {
     Null,
     LogicValue(logic::Value),
     Integer(i64),
-    Boolean(bool),
     Function(Arc<Function>),
 }
 
@@ -22,7 +21,6 @@ impl Object {
     fn is_truthy(&self) -> bool {
         match self {
             Object::Null
-            | Object::Boolean(false)
             | Object::LogicValue(Value::Low)
             | Object::LogicValue(Value::Unknown) => false,
             
@@ -276,14 +274,14 @@ impl InterpreterFrame {
 
             Instruction::LogicNot => {
                 let value = self.stack.pop().expect("empty stack");
-                self.stack.push(Object::Boolean(!value.is_truthy()));
+                self.stack.push(Object::LogicValue((!value.is_truthy()).into()));
                 InstructionExecutionResult::Ok
             }
 
             Instruction::Equal => {
                 let a = self.stack.pop().expect("empty stack");
                 let b = self.stack.pop().expect("empty stack");
-                self.stack.push(Object::Boolean(a == b));
+                self.stack.push(Object::LogicValue((a == b).into()));
                 InstructionExecutionResult::Ok
             }
 
@@ -324,13 +322,6 @@ impl InterpreterFrame {
         match self.stack.pop() {
             Some(Object::LogicValue(v)) => v,
             _ => panic!("expected logic value on stack"),
-        }
-    }
-
-    fn pop_boolean(&mut self) -> bool {
-        match self.stack.pop() {
-            Some(Object::Boolean(v)) => v,
-            _ => panic!("expected boolean on stack"),
         }
     }
 }
