@@ -74,6 +74,12 @@ pub enum Instruction {
     //   - Component index, integer
     //   - Pin index, integer
     ReadComponentPin,
+
+    // Magic instructions will never actually be executed by the interpreter.
+    // They exist only as helpers during the compilation stage.
+    // For example, the compiler may emit a MagicBreak instruction, which is
+    // transformed into a jump at a later point in the compilation process.
+    MagicBreak,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -295,6 +301,9 @@ impl InterpreterFrame {
                 }
                 InstructionExecutionResult::Ok
             }
+
+            Instruction::MagicBreak =>
+                unreachable!("magic instructions are never supposed to be executed, this is a bug"),
         };
 
         if will_increment_ip {

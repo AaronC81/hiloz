@@ -70,3 +70,35 @@ fn it_compiles_loop_statements() {
         ])
     );
 }
+
+#[test]
+fn it_compiles_break_statements() {
+    let model = utils::create_model_with_scripts(vec![vec![]]);
+
+    assert_eq!(
+        compile_script(&parse_block("{
+            loop {
+                _dump(1);
+                break;
+                _dump(2);
+                _dump(3);
+            }
+        }"), Some(&model), Some(&model.component_definitions[0])),
+        Ok(vec![
+            Instruction::Push(Integer(1)),
+            Instruction::Dump,
+
+            Instruction::Jump(6),
+
+            Instruction::Push(Integer(2)),
+            Instruction::Dump,
+
+            Instruction::Push(Integer(3)),
+            Instruction::Dump,
+
+            Instruction::Jump(-7),
+
+            Instruction::Halt
+        ])
+    );
+}

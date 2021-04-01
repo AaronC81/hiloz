@@ -35,6 +35,7 @@ pub enum Node {
     Divide(Box<Node>, Box<Node>),
 
     Loop(Box<Node>),
+    Break,
 
     Body(Vec<Node>),
     NodeList(Vec<Node>),
@@ -142,6 +143,8 @@ impl ModelParser {
                     value: Box::new(value),
                 })
             },
+            Rule::break_statement =>
+                Ok(Break),
             Rule::sleep_statement =>
                 Ok(Sleep(Box::new(
                     Self::pest_to_node(pest.into_inner().next().unwrap())?

@@ -1,8 +1,31 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, process};
+
+use se::Instruction;
 
 use crate::model as m;
 use crate::script_engine as se;
 use crate::parser as p;
+
+fn replace_instruction<F>(
+    instructions: &Vec<se::Instruction>,
+    sought: se::Instruction,
+    process_fn: F
+) -> Vec<se::Instruction>
+where F : Fn(usize, se::Instruction) -> se::Instruction
+{
+    instructions
+        .iter()
+        .enumerate()
+        .map(|(idx, inst)| {
+            let inst = inst.clone();
+            if inst == sought {
+                process_fn(idx, inst)
+            } else {
+                inst
+            }
+        })
+        .collect()
+}
 
 pub struct CompilationContext<'a> {
     parent: Option<&'a CompilationContext<'a>>,
@@ -189,10 +212,24 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
             let inner_instructions = compile(inner, context)?;
             let jump_distance = -(inner_instructions.len() as i64);
 
+            // Replace MagicBreak with a jump of the correct distance
+            let inner_instructions = replace_instruction(
+                &inner_instructions,
+                se::Instruction::MagicBreak,
+                |i, _| {
+                    // +1 jumps over the jump back to the beginning
+                    let break_jump_distance = inner_instructions.len() - i + 1;
+                    se::Instruction::Jump(break_jump_distance as i64)
+                }
+            );
+
             Ok([
                 inner_instructions,
                 vec![se::Instruction::Jump(jump_distance)],
             ].concat())
+        }
+        p::Node::Break => {
+            Ok(vec![se::Instruction::MagicBreak])
         }
 
         _ => unimplemented!()
