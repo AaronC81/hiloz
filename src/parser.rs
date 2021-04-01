@@ -29,6 +29,8 @@ pub enum Node {
     Connect(Vec<Node>),
     Pull { component: Vec<Node>, pull: logic::Value },
 
+    LogicAnd(Box<Node>, Box<Node>),
+    LogicOr(Box<Node>, Box<Node>),
     Add(Box<Node>, Box<Node>),
     Subtract(Box<Node>, Box<Node>),
     Multiply(Box<Node>, Box<Node>),
@@ -187,7 +189,7 @@ impl ModelParser {
             Rule::expression =>
                 Self::pest_to_node(pest.into_inner().next().unwrap()),
 
-            Rule::binop_addsub | Rule::binop_muldiv | Rule::binop_eq => {
+            Rule::binop_addsub | Rule::binop_muldiv | Rule::binop_eq | Rule::binop_andor => {
                 let mut inner = pest.into_inner();
                 let mut result = Self::pest_to_node(inner.next().unwrap())?;
 
@@ -195,6 +197,8 @@ impl ModelParser {
                     let operand = Box::new(Self::pest_to_node(inner.next().unwrap())?);
 
                     result = match operator.as_rule() {
+                        Rule::operator_and => LogicAnd(Box::new(result), operand),
+                        Rule::operator_or => LogicOr(Box::new(result), operand),
                         Rule::operator_eq => Equal(Box::new(result), operand),
                         Rule::operator_add => Add(Box::new(result), operand),
                         Rule::operator_sub => Subtract(Box::new(result), operand),

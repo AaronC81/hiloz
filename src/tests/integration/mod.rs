@@ -160,3 +160,37 @@ fn simple_model_with_flow_constructs() {
         ]
     )
 }
+
+#[test]
+fn simple_model_with_logic() {
+    let mut model = create_model("
+        define component Component {
+            script {
+                _dump(H && H);
+                _dump(H && L);
+                _dump(L && L);
+
+                _dump(H || L);
+                _dump(L || L);
+
+                _dump((L || H) && (H && H));
+            }
+        }
+
+        component c = Component();
+    ");
+    model.run(100000, |_, _| {});
+    assert_eq!(
+        model.components[model.component_idx(&"c".to_string()).unwrap()].dumps,
+        vec![
+            se::Object::LogicValue(Value::High),
+            se::Object::LogicValue(Value::Low),
+            se::Object::LogicValue(Value::Low),
+
+            se::Object::LogicValue(Value::High),
+            se::Object::LogicValue(Value::Low),
+            
+            se::Object::LogicValue(Value::High),
+        ]
+    )
+}

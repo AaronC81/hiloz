@@ -56,6 +56,8 @@ pub enum Instruction {
 
     Equal,
     LogicNot,
+    LogicAnd,
+    LogicOr,
 
     Jump(i64),
     JumpConditional(i64),
@@ -275,6 +277,24 @@ impl InterpreterFrame {
             Instruction::LogicNot => {
                 let value = self.stack.pop().expect("empty stack");
                 self.stack.push(Object::LogicValue((!value.is_truthy()).into()));
+                InstructionExecutionResult::Ok
+            }
+
+            Instruction::LogicAnd => {
+                let a = self.stack.pop().expect("empty stack");
+                let b = self.stack.pop().expect("empty stack");
+                self.stack.push(Object::LogicValue(
+                    (a.is_truthy() && b.is_truthy())
+                .into()));
+                InstructionExecutionResult::Ok
+            }
+
+            Instruction::LogicOr => {
+                let a = self.stack.pop().expect("empty stack");
+                let b = self.stack.pop().expect("empty stack");
+                self.stack.push(Object::LogicValue(
+                    (a.is_truthy() || b.is_truthy())
+                .into()));
                 InstructionExecutionResult::Ok
             }
 

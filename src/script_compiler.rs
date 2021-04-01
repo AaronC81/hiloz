@@ -179,6 +179,20 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
             ].concat())
         }
         
+        p::Node::LogicAnd(box a, box b) => {
+            Ok([
+                compile(b, context)?,
+                compile(a, context)?,
+                vec![se::Instruction::LogicAnd],
+            ].concat())
+        }
+        p::Node::LogicOr(box a, box b) => {
+            Ok([
+                compile(b, context)?,
+                compile(a, context)?,
+                vec![se::Instruction::LogicOr],
+            ].concat())
+        }
         p::Node::Add(box a, box b) => {
             Ok([
                 compile(b, context)?,
