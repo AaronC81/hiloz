@@ -207,6 +207,13 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
                 vec![se::Instruction::Divide],
             ].concat())
         }
+        p::Node::Equal(box a, box b) => {
+            Ok([
+                compile(b, context)?,
+                compile(a, context)?,
+                vec![se::Instruction::Equal],
+            ].concat())
+        }
 
         p::Node::Loop(box inner) => {
             let inner_instructions = compile(inner, context)?;

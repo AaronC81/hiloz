@@ -33,6 +33,7 @@ pub enum Node {
     Subtract(Box<Node>, Box<Node>),
     Multiply(Box<Node>, Box<Node>),
     Divide(Box<Node>, Box<Node>),
+    Equal(Box<Node>, Box<Node>),
 
     Loop(Box<Node>),
     If { condition: Box<Node>, body: Box<Node> },
@@ -186,16 +187,15 @@ impl ModelParser {
             Rule::expression =>
                 Self::pest_to_node(pest.into_inner().next().unwrap()),
 
-            Rule::binop_addsub | Rule::binop_muldiv => {
+            Rule::binop_addsub | Rule::binop_muldiv | Rule::binop_eq => {
                 let mut inner = pest.into_inner();
                 let mut result = Self::pest_to_node(inner.next().unwrap())?;
 
-                // TODO: seems to have associativity problems
-                // on the addsub rule, the addsub eats the future binops
                 while let Some(operator) = inner.next() {
                     let operand = Box::new(Self::pest_to_node(inner.next().unwrap())?);
 
                     result = match operator.as_rule() {
+                        Rule::operator_eq => Equal(Box::new(result), operand),
                         Rule::operator_add => Add(Box::new(result), operand),
                         Rule::operator_sub => Subtract(Box::new(result), operand),
                         Rule::operator_mul => Multiply(Box::new(result), operand),

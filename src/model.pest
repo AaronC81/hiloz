@@ -48,12 +48,14 @@ loop_statement = { "loop" ~ws~ statement_block }
 if_statement = { "if" ~ws~ "(" ~ws~ expression ~ws~ ")" ~ws~ statement_block }
 statement_block = { "{" ~ (ws~ statement ~ws)* ~ws~ "}" }
 
-expression = { binop_addsub | atom }
+expression = { binop_eq | atom }
 
+binop_eq = { binop_addsub ~ (ws~ operator_eq ~ws~ binop_addsub)* }
 binop_addsub = { binop_muldiv ~ (ws~ (operator_add | operator_sub) ~ws~ binop_muldiv)* }
 binop_muldiv = { binop_bot ~ (ws~ (operator_mul | operator_div) ~ws~ binop_bot)* }
 binop_bot = _{ atom }
 
+operator_eq = { "==" }
 operator_add = { "+" }
 operator_sub = { "-" }
 operator_mul = { "*" }
