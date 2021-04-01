@@ -1,4 +1,4 @@
-use super::logic;
+use super::logic::{self, Value};
 use super::model::{
     ComponentStateModification,
     ComponentIntermediateState,
@@ -18,6 +18,19 @@ pub enum Object {
     Function(Arc<Function>),
 }
 
+impl Object {
+    fn is_truthy(&self) -> bool {
+        match self {
+            Object::Null
+            | Object::Boolean(false)
+            | Object::LogicValue(Value::Low)
+            | Object::LogicValue(Value::Unknown) => false,
+            
+            _ => true,
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Function {
     pub parameters: Vec<String>,
@@ -28,6 +41,7 @@ pub struct Function {
 pub enum Instruction {
     Push(Object),
     Pop,
+    Duplicate,
     Dump,
     DefineLocal(String),
     SetLocal(String),
@@ -41,6 +55,12 @@ pub enum Instruction {
     Subtract,
     Multiply,
     Divide,
+
+    Equal,
+    LogicNot,
+
+    Jump(i64),
+    JumpConditional(i64),
     
     // Requires the following on the stack (starting at the top, i.e. pushed last):
     //   - Suspension time
@@ -112,7 +132,7 @@ pub enum InterpreterExecutionResult {
 
 impl InterpreterFrame {
     pub fn execute_one_instruction(&mut self, state: &mut ComponentIntermediateState) -> InstructionExecutionResult {
-        let instruction = &(*self.function).body[self.ip];
+        let instruction = self.function.body[self.ip].clone();
         let mut will_increment_ip = true;
         
         let result = match instruction {
@@ -123,6 +143,13 @@ impl InterpreterFrame {
 
             Instruction::Pop => {
                 self.stack.pop();
+                InstructionExecutionResult::Ok
+            }
+
+            Instruction::Duplicate => {
+                let object = self.stack.pop().expect("empty stack");
+                self.stack.push(object.clone());
+                self.stack.push(object.clone());
                 InstructionExecutionResult::Ok
             }
 
@@ -240,6 +267,34 @@ impl InterpreterFrame {
 
                 InstructionExecutionResult::Ok
             }
+
+            Instruction::LogicNot => {
+                let value = self.pop_logic_value();
+                self.stack.push(Object::LogicValue(!value));
+                InstructionExecutionResult::Ok
+            }
+
+            Instruction::Equal => {
+                let a = self.stack.pop().expect("empty stack");
+                let b = self.stack.pop().expect("empty stack");
+                self.stack.push(Object::Boolean(a == b));
+                InstructionExecutionResult::Ok
+            }
+
+            Instruction::Jump(offset) => {
+                self.ip = (self.ip as i64 + offset) as usize;
+                will_increment_ip = false;
+                InstructionExecutionResult::Ok
+            }
+
+            Instruction::JumpConditional(offset) => {
+                let value = self.stack.pop().expect("empty stack");
+                if value.is_truthy() {
+                    self.ip = (self.ip as i64 + offset) as usize;
+                    will_increment_ip = false;
+                }
+                InstructionExecutionResult::Ok
+            }
         };
 
         if will_increment_ip {
@@ -260,6 +315,13 @@ impl InterpreterFrame {
         match self.stack.pop() {
             Some(Object::LogicValue(v)) => v,
             _ => panic!("expected logic value on stack"),
+        }
+    }
+
+    fn pop_boolean(&mut self) -> bool {
+        match self.stack.pop() {
+            Some(Object::Boolean(v)) => v,
+            _ => panic!("expected boolean on stack"),
         }
     }
 }

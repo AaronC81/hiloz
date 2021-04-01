@@ -168,7 +168,7 @@ impl ComponentStateModificationDescription {
 pub struct ComponentIntermediateState {
     pub components: Vec<Component>,
     pub connections: Vec<Connection>,
-    modifications: Vec<ComponentStateModification>,
+    pub modifications: Vec<ComponentStateModification>,
     pub current_component_idx: Option<usize>,
 }
 

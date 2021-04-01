@@ -1,4 +1,4 @@
-use crate::{model::ComponentIntermediateState, script_engine::*};
+use crate::{model::ComponentIntermediateState, model::ComponentStateModificationDescription, script_engine::*};
 
 use std::sync::Arc;
 
@@ -108,5 +108,52 @@ fn it_can_have_locals() {
         Object::Integer(5),
         Object::Integer(5),
         Object::Integer(3),
+    ]);
+}
+
+#[test]
+fn it_performs_comparisons_and_jumps() {
+    let mut comp_state = ComponentIntermediateState::default();
+
+    let function = Arc::new(Function {
+        parameters: vec![],
+        body: vec![
+            // Set up loop counter
+            Instruction::Push(Object::Integer(1)),
+
+            // Loop start - comparison and conditional jump
+            Instruction::Duplicate,
+            Instruction::Push(Object::Integer(10)),
+            Instruction::Equal,
+            Instruction::JumpConditional(4),
+
+            // No loop body here
+
+            // Increment counter
+            Instruction::Push(Object::Integer(1)),
+            Instruction::Add,
+            Instruction::Jump(-6),
+
+            Instruction::Halt,
+        ]
+    });
+
+    let mut state = Interpreter::default();
+    state.frames.push(InterpreterFrame::new(function));
+
+    assert_eq!(state.execute_until_done(&mut comp_state), InterpreterExecutionResult::Halt);
+
+    let dumps = comp_state
+        .modifications
+        .iter()
+        .map(|m| match m.description.clone() {
+            ComponentStateModificationDescription::Dump(obj) => obj,
+            _ => unreachable!(),
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(state.frames.len(), 1);
+    assert_eq!(state.frames[0].stack, vec![
+        Object::Integer(10),
     ]);
 }
