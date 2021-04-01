@@ -121,3 +121,42 @@ fn simple_model_with_arithmetic() {
         ]
     )
 }
+
+#[test]
+fn simple_model_with_flow_constructs() {
+    let mut model = create_model("
+        define component Component {
+            script {
+                var i = 0;
+
+                loop {
+                    _dump(i);
+
+                    if (i == 9) {
+                        break;
+                    }
+
+                    i = i + 1;
+                }
+            }
+        }
+
+        component c = Component();
+    ");
+    model.run(100000, |_, _| {});
+    assert_eq!(
+        model.components[model.component_idx(&"c".to_string()).unwrap()].dumps,
+        vec![
+            se::Object::Integer(0),
+            se::Object::Integer(1),
+            se::Object::Integer(2),
+            se::Object::Integer(3),
+            se::Object::Integer(4),
+            se::Object::Integer(5),
+            se::Object::Integer(6),
+            se::Object::Integer(7),
+            se::Object::Integer(8),
+            se::Object::Integer(9),
+        ]
+    )
+}
