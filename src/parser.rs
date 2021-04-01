@@ -34,6 +34,8 @@ pub enum Node {
     Multiply(Box<Node>, Box<Node>),
     Divide(Box<Node>, Box<Node>),
 
+    Loop(Box<Node>),
+
     Body(Vec<Node>),
     NodeList(Vec<Node>),
 
@@ -201,6 +203,11 @@ impl ModelParser {
 
                 Ok(result)
             },
+
+            Rule::loop_statement =>
+                Ok(Loop(Box::new(
+                    Self::pest_to_node(pest.into_inner().next().unwrap())?
+                ))),
 
             Rule::operator_add | Rule::operator_sub | Rule::operator_mul | Rule::operator_div =>
                 unreachable!("raw operator should not be processed"),

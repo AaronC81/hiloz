@@ -23,21 +23,25 @@ component_instantiation = ${
 argument_list = { (expression ~ws~ ("," ~ws~ argument_list)?)? }
 
 statement = {
-    (
-        local_variable_definition_statement
-        | local_variable_assignment_statement
-        | pin_assignment
-        | dump_statement
-        | sleep_statement
-        | expression
+    loop_statement
+    | (
+        (
+            local_variable_definition_statement
+            | local_variable_assignment_statement
+            | pin_assignment
+            | dump_statement
+            | sleep_statement
+            | expression
+        )
+        ~ws~ ";"
     )
-    ~ws~ ";"
 }
 pin_assignment = { identifier ~ws~ "<-" ~ws~ expression }
 sleep_statement =  { "sleep" ~ws~ "(" ~ws~ expression ~ws~ ")" }
 dump_statement =  { "_dump" ~ws~ "(" ~ws~ expression ~ws~ ")" }
 local_variable_definition_statement = { "var" ~mws~ identifier ~ws~ ("=" ~ws~ expression ~ws)? }
 local_variable_assignment_statement = { identifier ~ws~ "=" ~ws~ expression }
+loop_statement = { "loop" ~ws~ statement_block }
 statement_block = { "{" ~ (ws~ statement ~ws)* ~ws~ "}" }
 
 expression = { binop_addsub | atom }

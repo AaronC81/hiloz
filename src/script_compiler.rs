@@ -185,6 +185,16 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
             ].concat())
         }
 
+        p::Node::Loop(box inner) => {
+            let inner_instructions = compile(inner, context)?;
+            let jump_distance = -(inner_instructions.len() as i64);
+
+            Ok([
+                inner_instructions,
+                vec![se::Instruction::Jump(jump_distance)],
+            ].concat())
+        }
+
         _ => unimplemented!()
     }
 }

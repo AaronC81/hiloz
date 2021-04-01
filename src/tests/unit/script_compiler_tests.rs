@@ -50,3 +50,23 @@ fn it_compiles_pin_assignments() {
         Err(_)
     ));
 }
+
+#[test]
+fn it_compiles_loop_statements() {
+    let model = utils::create_model_with_scripts(vec![vec![]]);
+
+    assert_eq!(
+        compile_script(&parse_block("{
+            loop {
+                _dump(1);
+            }
+        }"), Some(&model), Some(&model.component_definitions[0])),
+        Ok(vec![
+            Instruction::Push(Integer(1)),
+            Instruction::Dump,
+            Instruction::Jump(-2),
+
+            Instruction::Halt
+        ])
+    );
+}
