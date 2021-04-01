@@ -1,0 +1,13 @@
+{
+    "highlight.regexFlags": "g",
+    "highlight.regexes": {
+        "(define|script|component|var|pin|loop|if|sleep|connect)": {
+            "filterFileRegex": ".*\\.hlzm",
+            "decorations": [{ "color": "#569cd6" }],
+        },
+        "([a-zA-Z_][a-zA-Z0-9_]*)": {
+            "filterFileRegex": ".*\\.hlzm",
+            "decorations": [{ "color": "#dcdcaa" }],
+        },
+    }
+}
