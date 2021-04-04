@@ -312,10 +312,25 @@ impl Model {
             let component_idx = self.interpreters[interpreter_idx].component_idx.unwrap();
             let component = &self.components[component_idx];
 
-            // Get all connections from its component
+            let all_pins_modified_by_component_this_step = all_modifications.iter()
+                .filter_map(|modification| match modification {
+                    ComponentStateModification {
+                        component_idx: modification_component_idx,
+                        description: ComponentStateModificationDescription::Pin { idx, .. }
+                    } if *modification_component_idx == component_idx
+                        => Some(*idx),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+
+            // Get all relevant connections from its component
+            // We don't look at any pins which were changed this step, as we
+            // don't want a component to change a pin and then trigger itself
+            // through that pin
             let all_connection_idxs = component.definition.pins
                 .iter()
                 .enumerate()
+                .filter(|(pin_idx, _)| !all_pins_modified_by_component_this_step.contains(pin_idx))
                 .map(|(pin_idx, _)| PinConnection { component_idx, pin_idx })
                 .map(|pc| self.pin_connection(&pc))
                 .filter(|connection_idx| connection_idx.is_some())
@@ -323,7 +338,8 @@ impl Model {
                 .collect::<Vec<usize>>();
 
             // Are any of them in the set which changed?
-            if all_connection_idxs.iter().any(|idx| connection_values_modified.contains(idx)) {
+            if all_connection_idxs.iter().any(|idx| connection_values_modified.contains(idx))
+            {
                 // Let's trigger this component
                 interpreters_to_resume.push(suspension);
             }

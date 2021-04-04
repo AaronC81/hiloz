@@ -194,3 +194,63 @@ fn simple_model_with_logic() {
         ]
     )
 }
+
+#[test]
+fn simple_model_with_triggers() {
+    let mut model = create_model("
+        define component Component {
+            pin out;
+            script {
+                out <- L;
+                loop {
+                    sleep(100);
+                    out <- !out;
+                    _dump(out);
+                }
+            }
+        }
+
+        define component NotGate {
+            pin in;
+            pin out;
+            script {
+                loop {
+                    trigger;
+                    _dump(in);
+                    out <- !in;
+                }
+            }
+        }
+
+        component c = Component();
+        component n = NotGate();
+
+        connect(c.out, n.in);
+        connect(n.out);
+    ");
+    model.run(550, |_, _| {});
+
+    assert_eq!(
+        model.components[model.component_idx(&"c".to_string()).unwrap()].dumps,
+        vec![
+            se::Object::LogicValue(Value::High),
+            se::Object::LogicValue(Value::Low),
+            se::Object::LogicValue(Value::High),
+            se::Object::LogicValue(Value::Low),
+            se::Object::LogicValue(Value::High),            
+            se::Object::LogicValue(Value::Low),
+        ]
+    );
+
+    assert_eq!(
+        model.components[model.component_idx(&"n".to_string()).unwrap()].dumps,
+        vec![
+            se::Object::LogicValue(Value::Low),
+            se::Object::LogicValue(Value::High),
+            se::Object::LogicValue(Value::Low),
+            se::Object::LogicValue(Value::High),
+            se::Object::LogicValue(Value::Low),
+            se::Object::LogicValue(Value::High),            
+        ]
+    );
+}
