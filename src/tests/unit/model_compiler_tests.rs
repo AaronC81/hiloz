@@ -154,8 +154,7 @@ fn it_compiles_a_model() {
                     status: se::InterpreterStatus::Normal,
                 },
             ],
-            suspended_timing_queue: BinaryHeap::new(),
-            time_elapsed: 0,
+            ..Default::default()
         }
     )
 }

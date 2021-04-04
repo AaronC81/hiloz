@@ -13,6 +13,7 @@ pub enum Node {
     PinAssignment { target: Box<Node>, value: Box<Node> },
     Accessor { target: Box<Node>, name: Box<Node> },
     Sleep(Box<Node>),
+    Trigger,
     Dump(Box<Node>),
     Return(Box<Node>),
     LocalVariableDefinition { name: String, value: Option<Box<Node>> },
@@ -153,6 +154,8 @@ impl ModelParser {
                 Ok(Sleep(Box::new(
                     Self::pest_to_node(pest.into_inner().next().unwrap())?
                 ))),
+            Rule::trigger_statement =>
+                Ok(Trigger),
             Rule::dump_statement =>
                 Ok(Dump(Box::new(
                     Self::pest_to_node(pest.into_inner().next().unwrap())?

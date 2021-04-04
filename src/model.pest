@@ -33,6 +33,7 @@ statement = {
             | pin_assignment
             | dump_statement
             | sleep_statement
+            | trigger_statement
             | expression
         )
         ~ws~ ";"
@@ -40,6 +41,7 @@ statement = {
 }
 pin_assignment = { identifier ~ws~ "<-" ~ws~ expression }
 sleep_statement =  { "sleep" ~ws~ "(" ~ws~ expression ~ws~ ")" }
+trigger_statement =  { "trigger" }
 dump_statement =  { "_dump" ~ws~ "(" ~ws~ expression ~ws~ ")" }
 break_statement =  { "break" }
 local_variable_definition_statement = { "var" ~mws~ identifier ~ws~ ("=" ~ws~ expression ~ws)? }

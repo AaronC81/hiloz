@@ -66,6 +66,8 @@ pub enum Instruction {
     //   - Suspension time
     SuspendSleep,
 
+    SuspendTrigger,
+
     //   - Component index, integer
     //   - Pin index, integer
     //   - New pin value, logic value
@@ -106,6 +108,7 @@ impl InterpreterFrame {
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum SuspensionMode {
     Sleep(u64),
+    Trigger,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -243,6 +246,10 @@ impl InterpreterFrame {
 
             Instruction::SuspendSleep => InstructionExecutionResult::OkSuspend(
                 SuspensionMode::Sleep(self.pop_integer() as u64)
+            ),
+
+            Instruction::SuspendTrigger => InstructionExecutionResult::OkSuspend(
+                SuspensionMode::Trigger
             ),
 
             Instruction::ModifyComponentPin => {

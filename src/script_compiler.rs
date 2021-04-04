@@ -90,6 +90,8 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
                 vec![se::Instruction::SuspendSleep]
             ].concat()),
 
+        p::Node::Trigger => Ok(vec![se::Instruction::SuspendTrigger]),
+
         p::Node::Identifier(i) => {
             let pin_idx = context.component_definition().pin_idx(i);
             let local_defined = context.defined_local(i);

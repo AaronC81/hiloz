@@ -190,6 +190,7 @@ pub fn compile_model(node: &p::Node) -> Result<m::Model, Box<dyn Error>> {
         interpreters: vec![],
 
         suspended_timing_queue: BinaryHeap::new(),
+        suspended_trigger_list: vec![],
         time_elapsed: 0,
     };
 

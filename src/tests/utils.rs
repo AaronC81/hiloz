@@ -49,7 +49,6 @@ pub fn create_model_with_scripts(scripts: Vec<Vec<Instruction>>) -> Model {
     Model {
         component_definitions,
         components,
-        connections: vec![],
         interpreters: functions.into_iter().enumerate().map(|(i, func)|
             Interpreter {
                 frames: vec![InterpreterFrame::new(func)],
@@ -58,8 +57,7 @@ pub fn create_model_with_scripts(scripts: Vec<Vec<Instruction>>) -> Model {
             }
         ).collect(),
 
-        time_elapsed: 0,
-        suspended_timing_queue: BinaryHeap::new(),
+        ..Default::default()
     }
 }
 

@@ -1,11 +1,13 @@
 use binary_heap::PeekMut;
+use logic::Value;
+use se::SuspensionMode;
 
 use super::logic;
 use super::script_engine as se;
 use super::model_compiler as mc;
 use super::parser as p;
 
-use std::{cmp::Ordering, collections::{BinaryHeap, VecDeque, binary_heap}, sync::Arc};
+use std::{cmp::Ordering, collections::{BinaryHeap, HashMap, VecDeque, binary_heap}, sync::Arc};
 use std::collections::HashSet;
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -76,6 +78,11 @@ pub struct TimingQueueEntry {
     time_remaining: u64,
 }
 
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub struct TriggerListEntry {
+    interpreter_idx: usize,
+}
+
 impl PartialOrd for TimingQueueEntry {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -89,7 +96,7 @@ impl Ord for TimingQueueEntry {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Model {
     pub component_definitions: Vec<Arc<ComponentDefinition>>,
     pub components: Vec<Component>,
@@ -98,6 +105,7 @@ pub struct Model {
 
     pub time_elapsed: u64,
     pub suspended_timing_queue: BinaryHeap<TimingQueueEntry>,
+    pub suspended_trigger_list: Vec<TriggerListEntry>,
 }
 
 impl PartialEq for Model {
@@ -131,7 +139,7 @@ pub struct ComponentStateModification {
 
 impl ComponentStateModification {
     fn apply<T>(&self, components: &mut T) where T : std::ops::IndexMut<usize, Output=Component> {
-        self.description.apply(&mut components[self.component_idx]);
+        self.description.apply(&mut components[self.component_idx])
     }
 }
 
@@ -266,6 +274,12 @@ impl Model {
                                 time_remaining: time, 
                             })
                         }
+
+                        se::SuspensionMode::Trigger => {
+                            self.suspended_trigger_list.push(TriggerListEntry {
+                                interpreter_idx: i,
+                            })
+                        }
                     }
                 },
                 se::InterpreterExecutionResult::Halt => (),
@@ -273,10 +287,56 @@ impl Model {
             }
         }
 
+        // Save all connection values before applying modifications
+        let connection_values_before_modification = self.all_connection_values();
+
         // Apply modifications to main component list
         for modification in &all_modifications {
             modification.apply(&mut self.components);
         }
+
+        // So that we can determine which interpreters to trigger, find out
+        // which connections this step changed
+        let connection_values_after_modification = self.all_connection_values();
+
+        // Find which connections changed
+        let connection_values_modified =
+            connection_values_after_modification.difference(&connection_values_before_modification)
+            .map(|(idx, _)| *idx)
+            .collect::<HashSet<_>>();
+        
+        // Look through interpreters suspended on trigger
+        let mut interpreters_to_resume = vec![];
+        for suspension in self.suspended_trigger_list.clone().into_iter() {
+            let interpreter_idx = suspension.interpreter_idx;
+            let component_idx = self.interpreters[interpreter_idx].component_idx.unwrap();
+            let component = &self.components[component_idx];
+
+            // Get all connections from its component
+            let all_connection_idxs = component.definition.pins
+                .iter()
+                .enumerate()
+                .map(|(pin_idx, _)| PinConnection { component_idx, pin_idx })
+                .map(|pc| self.pin_connection(&pc))
+                .filter(|connection_idx| connection_idx.is_some())
+                .map(|connection_idx| connection_idx.unwrap())
+                .collect::<Vec<usize>>();
+
+            // Are any of them in the set which changed?
+            if all_connection_idxs.iter().any(|idx| connection_values_modified.contains(idx)) {
+                // Let's trigger this component
+                interpreters_to_resume.push(suspension);
+            }
+        };
+        
+        // Resume the interpreters
+        // (Doing this after the loop above avoids mutable reference problems)
+        for entry in interpreters_to_resume.iter() {
+            self.interpreters[entry.interpreter_idx].resume();
+        }
+
+        // Remove all of them from the list
+        self.suspended_trigger_list.retain(|entry| !interpreters_to_resume.contains(&entry));
 
         StepResult::Ok(all_modifications)
     }
@@ -404,6 +464,14 @@ pub trait ConnectedComponents {
 
     fn component_idx(&self, name: &String) -> Option<usize> {
         self.components().iter().position(|c| &c.instance_name == name)
+    }
+
+    fn all_connection_values(&self) -> HashSet<(usize, Value)> {
+        self.connections()
+            .iter()
+            .enumerate()
+            .map(|(i, conn)| (i, self.connection_value(conn).unwrap()))
+            .collect()
     }
 }
 

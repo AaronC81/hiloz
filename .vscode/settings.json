@@ -1,7 +1,7 @@
 {
     "highlight.regexFlags": "g",
     "highlight.regexes": {
-        "(define|script|component|var|pin|loop|if|sleep|connect)": {
+        "(define|script|component|var|pin|loop|if|sleep|trigger|connect)": {
             "filterFileRegex": ".*\\.hlzm",
             "decorations": [{ "color": "#569cd6" }],
         },
