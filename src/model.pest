@@ -50,7 +50,7 @@ loop_statement = { "loop" ~ws~ statement_block }
 if_statement = { "if" ~ws~ "(" ~ws~ expression ~ws~ ")" ~ws~ statement_block }
 statement_block = { "{" ~ (ws~ statement ~ws)* ~ws~ "}" }
 
-expression = { binop_andor | atom }
+expression = { binop_andor | atom | unop_not }
 
 // TODO: should "and" have higher precendece?
 binop_andor = { binop_eq ~ (ws~ (operator_and | operator_or) ~ws~ binop_eq)* }
@@ -58,6 +58,8 @@ binop_eq = { binop_addsub ~ (ws~ operator_eq ~ws~ binop_addsub)* }
 binop_addsub = { binop_muldiv ~ (ws~ (operator_add | operator_sub) ~ws~ binop_muldiv)* }
 binop_muldiv = { binop_bot ~ (ws~ (operator_mul | operator_div) ~ws~ binop_bot)* }
 binop_bot = _{ atom }
+
+unop_not = { "!" ~ expression }
 
 operator_and = { "&&" }
 operator_or = { "||" }

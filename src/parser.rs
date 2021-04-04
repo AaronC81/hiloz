@@ -32,6 +32,7 @@ pub enum Node {
 
     LogicAnd(Box<Node>, Box<Node>),
     LogicOr(Box<Node>, Box<Node>),
+    LogicNot(Box<Node>),
     Add(Box<Node>, Box<Node>),
     Subtract(Box<Node>, Box<Node>),
     Multiply(Box<Node>, Box<Node>),
@@ -192,6 +193,11 @@ impl ModelParser {
             Rule::expression =>
                 Self::pest_to_node(pest.into_inner().next().unwrap()),
 
+            Rule::unop_not => {
+                Ok(LogicNot(Box::new(
+                    Self::pest_to_node(pest.into_inner().next().unwrap())?
+                )))
+            }
             Rule::binop_addsub | Rule::binop_muldiv | Rule::binop_eq | Rule::binop_andor => {
                 let mut inner = pest.into_inner();
                 let mut result = Self::pest_to_node(inner.next().unwrap())?;
