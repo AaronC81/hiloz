@@ -13,7 +13,7 @@ fn parse_block(input: &str) -> Node {
 #[test]
 fn it_compiles_a_blank_body_to_halt() {
     assert_eq!(
-        compile_script(&parse_block("{}"), None, None),
+        compile_script(&parse_block("{}"), None, None, vec![]),
         Ok(vec![Instruction::Halt])
     );
 }
@@ -26,7 +26,7 @@ fn it_compiles_pin_assignments() {
         compile_script(&parse_block("{
             pin <- H;
             pin <- L;
-        }"), Some(&model), Some(&model.component_definitions[1])),
+        }"), Some(&model), Some(&model.component_definitions[1]), vec![]),
         Ok(vec![
             Instruction::Push(LogicValue(Value::High)),
             Instruction::Push(Integer(0)),
@@ -46,7 +46,7 @@ fn it_compiles_pin_assignments() {
     assert!(matches!(
         compile_script(&parse_block("{
             pin_that_does_not_exist <- H;
-        }"), Some(&model), Some(&model.component_definitions[1])),
+        }"), Some(&model), Some(&model.component_definitions[1]), vec![]),
         Err(_)
     ));
 }
@@ -60,7 +60,7 @@ fn it_compiles_loop_statements() {
             loop {
                 _dump(1);
             }
-        }"), Some(&model), Some(&model.component_definitions[0])),
+        }"), Some(&model), Some(&model.component_definitions[0]), vec![]),
         Ok(vec![
             Instruction::Push(Integer(1)),
             Instruction::Dump,
@@ -83,7 +83,7 @@ fn it_compiles_break_statements() {
                 _dump(2);
                 _dump(3);
             }
-        }"), Some(&model), Some(&model.component_definitions[0])),
+        }"), Some(&model), Some(&model.component_definitions[0]), vec![]),
         Ok(vec![
             Instruction::Push(Integer(1)),
             Instruction::Dump,
@@ -115,7 +115,7 @@ fn it_compiles_if_statements() {
                 _dump(3);
             }
             _dump(0);
-        }"), Some(&model), Some(&model.component_definitions[0])),
+        }"), Some(&model), Some(&model.component_definitions[0]), vec![]),
         Ok(vec![
             Instruction::Push(Integer(1)),
             Instruction::LogicNot,

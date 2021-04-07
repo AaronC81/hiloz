@@ -254,3 +254,40 @@ fn simple_model_with_triggers() {
         ]
     );
 }
+
+#[test]
+fn simple_model_with_constructor() {
+    let mut model = create_model("
+        define component Component {
+            pin out;
+            
+            constructor(initial_value) {
+                out <- initial_value;
+            }
+
+            script {
+                _dump(out);
+            }
+        }
+
+        component ch = Component(H);
+        component cl = Component(L);
+    ");
+
+    model.construct();
+    model.run(10, |_, _| {});
+
+    assert_eq!(
+        model.components[model.component_idx(&"ch".to_string()).unwrap()].dumps,
+        vec![
+            se::Object::LogicValue(Value::High),
+        ]
+    );
+
+    assert_eq!(
+        model.components[model.component_idx(&"cl".to_string()).unwrap()].dumps,
+        vec![
+            se::Object::LogicValue(Value::Low),
+        ]
+    );
+}

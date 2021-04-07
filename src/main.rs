@@ -55,6 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     vcd.generate_header(&model);
 
     // Simulate
+    model.construct();
     model.run(opt.max_time, |a, b| vcd.step(a, b));
 
     println!("Simulation complete at {}{} time units", model.time_elapsed, if model.time_elapsed > opt.max_time { "(!!!)" } else { "" });

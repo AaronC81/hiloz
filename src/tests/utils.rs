@@ -33,7 +33,6 @@ pub fn create_model_with_scripts(scripts: Vec<Vec<Instruction>>) -> Model {
         components.push(Component {
             instance_name: format!("instance{}", i),
             definition: def.clone(),
-            constructor_arguments: vec![],
             pins: vec![
                 Pin {
                     definition: def.pins[0].clone(),

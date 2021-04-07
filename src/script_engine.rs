@@ -44,6 +44,7 @@ pub enum Instruction {
     DefineLocal(String),
     SetLocal(String),
     GetLocal(String),
+    GetParameter(usize),
     Return,
     Call,
     Halt,
@@ -85,7 +86,15 @@ pub enum Instruction {
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
+pub enum InterpreterFrameKind {
+    Normal,
+    FunctionTopLevel,
+    ScriptTopLevel,
+}
+
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct InterpreterFrame {
+    pub kind: InterpreterFrameKind,
     pub function: Arc<Function>,
     pub arguments: Vec<Object>,
     pub locals: HashMap<String, Object>,
@@ -96,6 +105,7 @@ pub struct InterpreterFrame {
 impl InterpreterFrame {
     pub fn new(function: Arc<Function>) -> InterpreterFrame {
         InterpreterFrame {
+            kind: InterpreterFrameKind::FunctionTopLevel,
             function,
             arguments: vec![],
             locals: HashMap::new(),
@@ -121,6 +131,7 @@ pub enum InstructionExecutionResult {
     OkDefineLocal(String),
     OkSetLocal { name: String, value: Object },
     OkGetLocal(String),
+    OkGetParameter(usize),
     Err(String),
 }
 
@@ -183,6 +194,9 @@ impl InterpreterFrame {
 
             Instruction::GetLocal(name) =>
                 InstructionExecutionResult::OkGetLocal(name.clone()),
+
+            Instruction::GetParameter(idx) =>
+                InstructionExecutionResult::OkGetParameter(idx),
 
             Instruction::Return => {
                 InstructionExecutionResult::OkReturn
@@ -409,6 +423,16 @@ impl Interpreter {
         frame.locals[name].clone()
     }
 
+    pub fn find_function_frame(&mut self) -> Option<&mut InterpreterFrame> {
+        self.frames.iter_mut()
+            .rev()
+            .find(|frame| frame.kind == InterpreterFrameKind::FunctionTopLevel)
+    }
+
+    pub fn get_parameter(&mut self, idx: usize) -> Object {
+        self.find_function_frame().expect("not a function").arguments[idx].clone()
+    }
+
     pub fn execute_one_instruction(&mut self, state: &mut ComponentIntermediateState) -> FrameExecutionResult {
         let result = self.current_frame().execute_one_instruction(state);
         match result {
@@ -450,6 +474,11 @@ impl Interpreter {
                 self.current_frame().stack.push(local_value);
                 FrameExecutionResult::Ok
             },
+            InstructionExecutionResult::OkGetParameter(idx) => {
+                let parameter_value = self.get_parameter(idx);
+                self.current_frame().stack.push(parameter_value);
+                FrameExecutionResult::Ok
+            }
             InstructionExecutionResult::Err(s) => FrameExecutionResult::Err(s),
         }
     }

@@ -69,7 +69,6 @@ pub struct Component {
     pub pins: Vec<Pin>,
     pub variables: Vec<Variable>,
     pub dumps: Vec<se::Object>,
-    pub constructor_arguments: Vec<se::Object>,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -102,6 +101,7 @@ pub struct Model {
     pub components: Vec<Component>,
     pub connections: Vec<Connection>,
     pub interpreters: Vec<se::Interpreter>,
+    pub constructor_interpreters: Vec<se::Interpreter>,
 
     pub time_elapsed: u64,
     pub suspended_timing_queue: BinaryHeap<TimingQueueEntry>,
@@ -355,6 +355,34 @@ impl Model {
         self.suspended_trigger_list.retain(|entry| !interpreters_to_resume.contains(&entry));
 
         StepResult::Ok(all_modifications)
+    }
+
+    pub fn construct(&mut self) {
+        let intermediate_state = ComponentIntermediateState {
+            components: self.components.clone(),
+            connections: self.connections.clone(),
+            ..ComponentIntermediateState::default()
+        };
+
+        for interpreter in self.constructor_interpreters.iter_mut() {
+            let mut interpreter_state = intermediate_state.clone();
+            interpreter_state.current_component_idx = interpreter.component_idx;
+
+            let interpreter_result = interpreter.execute_until_done(&mut interpreter_state);
+
+            match interpreter_result {
+                se::InterpreterExecutionResult::Suspend(_) =>
+                    panic!("constructors may not suspend"),
+
+                se::InterpreterExecutionResult::Err(s) => panic!(s),
+
+                _ => (),
+            }
+
+            for modification in interpreter_state.modifications {
+                modification.apply(&mut self.components);
+            }
+        }
     }
 
     pub fn run<F>(&mut self, until_time: u64, mut between_steps: F) where F : FnMut(&Model, &Vec<ComponentStateModification>) {

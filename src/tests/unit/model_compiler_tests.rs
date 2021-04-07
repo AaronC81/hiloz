@@ -87,7 +87,6 @@ fn it_compiles_a_model() {
             components: vec![
                 m::Component {
                     definition: component_def.clone(),
-                    constructor_arguments: vec![],
                     pins: vec![
                         m::Pin {
                             definition: component_def.clone().pins[0].clone(),
@@ -107,7 +106,6 @@ fn it_compiles_a_model() {
 
                 m::Component {
                     definition: component_def.clone(),
-                    constructor_arguments: vec![],
                     pins: vec![
                         m::Pin {
                             definition: component_def.clone().pins[0].clone(),
@@ -131,6 +129,7 @@ fn it_compiles_a_model() {
                     component_idx: Some(0),
                     frames: vec![
                         se::InterpreterFrame {
+                            kind: se::InterpreterFrameKind::ScriptTopLevel,
                             arguments: vec![],
                             ip: 0,
                             locals: HashMap::new(),
@@ -144,6 +143,7 @@ fn it_compiles_a_model() {
                     component_idx: Some(1),
                     frames: vec![
                         se::InterpreterFrame {
+                            kind: se::InterpreterFrameKind::ScriptTopLevel,
                             arguments: vec![],
                             ip: 0,
                             locals: HashMap::new(),

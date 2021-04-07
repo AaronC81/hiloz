@@ -32,6 +32,7 @@ pub struct CompilationContext<'a> {
     model: Option<&'a m::Model>,
     component_definition: Option<&'a m::ComponentDefinition>,
     locals: HashSet<String>,
+    parameters: Vec<String>,
 }
 
 impl<'a> CompilationContext<'a> {
@@ -58,12 +59,26 @@ impl<'a> CompilationContext<'a> {
         self.locals.insert(name.clone());
     }
 
+    pub fn defined_parameter(&self, name: &String) -> bool {
+        self.parameter_idx(name).is_some()
+    }
+
+    pub fn parameter_idx(&self, name: &String) -> Option<usize> {
+        self.parameters.iter().position(|x| x == name).or_else(||
+            if let Some(p) = self.parent {
+                p.parameter_idx(name)
+            } else {
+                None
+            })
+    }
+
     fn child(&'a self) -> Self {
         Self {
             parent: Some(self),
             model: None,
             component_definition: None,
             locals: Default::default(),
+            parameters: vec![],
         }
     }
 }
@@ -95,9 +110,13 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
         p::Node::Identifier(i) => {
             let pin_idx = context.component_definition().pin_idx(i);
             let local_defined = context.defined_local(i);
+            let parameter_idx = context.parameter_idx(i);
 
-            if pin_idx.is_some() && local_defined {
-                return Err(format!("there is both a pin and a local variable called {}", i));
+            if [pin_idx.is_some(), local_defined, parameter_idx.is_some()].iter()
+                .filter(|x| **x)
+                .count() > 1
+            {
+                return Err(format!("there are multiple items called {}", i));
             }
 
             if let Some(pin_idx) = pin_idx {
@@ -105,6 +124,10 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
                     se::Instruction::Push(se::Object::Integer(pin_idx as i64)),
                     se::Instruction::GetOwnComponentIdx,
                     se::Instruction::ReadComponentPin,
+                ])
+            } else if let Some(parameter_idx) = parameter_idx {
+                Ok(vec![
+                    se::Instruction::GetParameter(parameter_idx),
                 ])
             } else if local_defined {
                 Ok(vec![
@@ -281,12 +304,13 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
     }
 }
 
-pub fn compile_script(node: &p::Node, model: Option<&m::Model>, component_definition: Option<&m::ComponentDefinition>) -> Result<Vec<se::Instruction>, String> {
+pub fn compile_script(node: &p::Node, model: Option<&m::Model>, component_definition: Option<&m::ComponentDefinition>, parameters: Vec<String>) -> Result<Vec<se::Instruction>, String> {
     let mut result = compile(node, &mut CompilationContext {
         parent: None,
         model,
         component_definition,
         locals: Default::default(),
+        parameters,
     })?;
 
     // Add final halt

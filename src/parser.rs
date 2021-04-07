@@ -57,6 +57,21 @@ use se::Object::{*, self};
 struct ModelParser;
 
 impl ModelParser {
+    fn node_list_to_identifiers(node: Node) -> Result<Vec<String>, Box<dyn Error>> {
+        if let NodeList(list) = node {
+            Ok(list.iter()
+                .map(|x|
+                    if let Identifier(s) = x {
+                        Ok(s.into())
+                    } else {
+                        Err("not an identifier".into()) 
+                    })
+                .collect::<Result<Vec<String>, Box<dyn Error>>>()?)
+        } else {
+            Err("not a node list".into())
+        }
+    }
+
     fn pest_to_node(pest: Pair<Rule>) -> Result<Node, Box<dyn Error>> {
         match pest.as_rule() {
             Rule::integer =>
@@ -97,6 +112,16 @@ impl ModelParser {
                 Ok(ScriptDefinition(Box::new(
                     Self::pest_to_node(pest.into_inner().next().unwrap())?
                 ))),
+            Rule::constructor_definition => {
+                let mut inner = pest.into_inner();
+                let parameter_list = Self::pest_to_node(inner.next().unwrap())?;
+                let parameters = Self::node_list_to_identifiers(parameter_list)?;
+                let body = Self::pest_to_node(inner.next().unwrap())?;
+                Ok(ConstructorDefinition {
+                    parameters,
+                    body: Box::new(body),
+                })
+            },
             Rule::component_definition => {
                 let mut inner = pest.into_inner();
                 let name = inner.next().unwrap().as_str();
@@ -113,10 +138,16 @@ impl ModelParser {
                 let mut inner = pest.into_inner();
                 let instance_name = inner.next().unwrap().as_str().into();
                 let component_name = inner.next().unwrap().as_str().into();
+                let argument_list = Self::pest_to_node(inner.next().unwrap())?;
+                let arguments = if let NodeList(nodes) = argument_list {
+                    nodes
+                } else {
+                    unreachable!();
+                };
                 Ok(ComponentInstantiation {
                     instance_name,
                     component_name,
-                    arguments: vec![],
+                    arguments,
                 })
             }
 

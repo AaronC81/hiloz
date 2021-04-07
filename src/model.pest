@@ -10,14 +10,19 @@ accessor = { identifier ~ws~ "." ~ws~ identifier }
 pin_definition = ${ "pin" ~mws~ identifier ~ws~ ";" }
 connect_definition = {  "connect" ~ws~ "(" ~ws~ argument_list ~ws~ ")" ~ws~ ";" }
 script_definition = { "script" ~ws~ statement_block }
+constructor_definition = {
+    "constructor"
+    ~ws~ "(" ~ws~ argument_list ~ws~ ")"
+    ~ws~ statement_block
+}
 component_definition = ${
     "define" ~mws~ "component" ~mws~ identifier
-    ~ws~ "{" ~ws~ ((pin_definition | script_definition) ~ws)* ~ "}"
+    ~ws~ "{" ~ws~ ((pin_definition | script_definition | constructor_definition) ~ws)* ~ "}"
 }
 component_instantiation = ${
     "component" ~mws~ identifier ~ws~ "="
-    // TODO: constructor parameters
-    ~ws~ identifier ~ws~ "(" ~ws~ ")" ~ws~ ";"
+    ~ws~ identifier
+    ~ws~ "(" ~ws~ argument_list ~ws~ ")" ~ws~ ";"
 }
 
 argument_list = { (expression ~ws~ ("," ~ws~ argument_list)?)? }

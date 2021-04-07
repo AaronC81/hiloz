@@ -27,6 +27,16 @@ impl fmt::Display for ModelCompilerError {
 
 impl Error for ModelCompilerError {}
 
+fn compile_constant_object(node: &p::Node) -> Result<se::Object, Box<dyn Error>> {
+    if let p::Node::Constant(c) = node {
+        Ok(c.clone())
+    } else {
+        Err(Box::new(ModelCompilerError::new(
+            format!("cannot evaluate {:?} in this context", node)
+        )))
+    }
+}
+
 fn compile_component_definition(
     node: &p::Node,
     model: &m::Model,
@@ -63,10 +73,30 @@ fn compile_component_definition(
                 script_body,
                 Some(model),
                 Some(component_definition),
+                vec![],
             )?;
             component_definition.script = Some(Arc::new(se::Function {
                 body: instructions,
                 parameters: vec![],
+            }));
+        }
+
+        p::Node::ConstructorDefinition { parameters, body } => {
+            if component_definition.script.is_some() {
+                return Err(ModelCompilerError::new(
+                    "cannot specify constructor twice"
+                ).into())
+            }
+
+            let instructions = sc::compile_script(
+                body,
+                Some(model),
+                Some(component_definition),
+                parameters.clone(),
+            )?;
+            component_definition.constructor = Some(Arc::new(se::Function {
+                body: instructions,
+                parameters: parameters.clone(),
             }));
         }
 
@@ -125,7 +155,7 @@ fn compile_model_(node: &p::Node, model: &mut m::Model) -> Result<(), Box<dyn Er
             model.component_definitions.push(Arc::new(component_definition));
         }
 
-        p::Node::ComponentInstantiation { instance_name, component_name, .. } => {
+        p::Node::ComponentInstantiation { instance_name, component_name, arguments } => {
             let definition = model.component_definitions
                 .iter()
                 .find(|def| &def.name == component_name);
@@ -142,7 +172,6 @@ fn compile_model_(node: &p::Node, model: &mut m::Model) -> Result<(), Box<dyn Er
             model.components.push(m::Component {
                 instance_name: instance_name.clone(),
                 definition: definition.clone(),
-                constructor_arguments: vec![],
                 pins: definition.pins.iter().map(|pin_def| m::Pin {
                     definition: pin_def.clone(),
                     pull: l::Value::Unknown,
@@ -152,11 +181,33 @@ fn compile_model_(node: &p::Node, model: &mut m::Model) -> Result<(), Box<dyn Er
                 dumps: vec![],
             });
 
+            if let Some(function) = definition.constructor.clone() {
+                let constructor_arguments = arguments.iter()
+                    .map(|a| compile_constant_object(a))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                model.constructor_interpreters.push(se::Interpreter {
+                    component_idx: Some(model.components.len() - 1),
+                    frames: vec![
+                        se::InterpreterFrame {
+                            kind: se::InterpreterFrameKind::FunctionTopLevel,
+                            arguments: constructor_arguments,
+                            function,
+                            ip: 0,
+                            locals: Default::default(),
+                            stack: vec![],
+                        }
+                    ],
+                    status: se::InterpreterStatus::Normal,
+                })
+            }
+
             if let Some(function) = definition.script.clone() {
                 model.interpreters.push(se::Interpreter {
                     component_idx: Some(model.components.len() - 1),
                     frames: vec![
                         se::InterpreterFrame {
+                            kind: se::InterpreterFrameKind::ScriptTopLevel,
                             arguments: vec![],
                             function,
                             ip: 0,
@@ -188,6 +239,7 @@ pub fn compile_model(node: &p::Node) -> Result<m::Model, Box<dyn Error>> {
         components: vec![],
         connections: vec![],
         interpreters: vec![],
+        constructor_interpreters: vec![],
 
         suspended_timing_queue: BinaryHeap::new(),
         suspended_trigger_list: vec![],
