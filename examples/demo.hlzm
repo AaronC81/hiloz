@@ -1,0 +1,35 @@
+define component Clock {
+    pin out;
+    var delay;
+
+    constructor(period) {
+        delay = period / 2;
+    }
+
+    script {
+        loop {
+            out <- !out;
+            sleep(delay);
+        }
+    }
+}
+
+define component AndGate {
+    pin a;
+    pin b;
+    pin c;
+
+    script {
+        loop {
+            trigger;
+            c <- a && b;
+        }
+    }
+}
+
+component clk1 = Clock(100);
+component clk2 = Clock(70);
+component and = AndGate();
+
+connect(clk1.out, and.a);
+connect(clk2.out, and.b);
