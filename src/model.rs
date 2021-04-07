@@ -60,6 +60,12 @@ impl ComponentDefinition {
             .iter()
             .position(|pin_def| &pin_def.name == name)
     }
+
+    pub fn variable_idx(&self, name: &String) -> Option<usize> {
+        self.variables
+            .iter()
+            .position(|var_def| &var_def.name == name)
+    }
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]

@@ -25,6 +25,7 @@ pub enum Node {
     ConstructorDefinition { parameters: Vec<String>, body: Box<Node> },
     FunctionDefinition { name: String, parameters: Vec<String>, body: Box<Node> },
     ScriptDefinition(Box<Node>),
+    ComponentVariableDefinition { name: String },
 
     ComponentInstantiation { instance_name: String, component_name: String, arguments: Vec<Node> },
     Connect(Vec<Node>),
@@ -112,6 +113,10 @@ impl ModelParser {
                 Ok(ScriptDefinition(Box::new(
                     Self::pest_to_node(pest.into_inner().next().unwrap())?
                 ))),
+            Rule::component_variable_definition_statement =>
+                Ok(ComponentVariableDefinition {
+                    name: pest.into_inner().next().unwrap().as_str().into(),
+                }),
             Rule::constructor_definition => {
                 let mut inner = pest.into_inner();
                 let parameter_list = Self::pest_to_node(inner.next().unwrap())?;

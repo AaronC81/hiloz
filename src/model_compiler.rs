@@ -1,6 +1,7 @@
 use std::{sync::Arc, collections::BinaryHeap, error::Error, fmt};
 
-use m::ConnectedComponents;
+use m::{ConnectedComponents, Variable, VariableDefinition};
+use se::Object;
 
 use crate::model as m;
 use crate::script_compiler as sc;
@@ -100,6 +101,12 @@ fn compile_component_definition(
             }));
         }
 
+        p::Node::ComponentVariableDefinition { name } => {
+            component_definition.variables.push(Arc::new(m::VariableDefinition {
+                name: name.into(),
+            }))
+        }
+
         _ => unimplemented!("compile component definition child {:?}", node)
     };
 
@@ -177,7 +184,10 @@ fn compile_model_(node: &p::Node, model: &mut m::Model) -> Result<(), Box<dyn Er
                     pull: l::Value::Unknown,
                     value: l::Value::Unknown,
                 }).collect(),
-                variables: vec![],
+                variables: definition.variables.iter().map(|var_def| m::Variable {
+                    definition: var_def.clone(),
+                    value: se::Object::Null,
+                }).collect(),
                 dumps: vec![],
             });
 

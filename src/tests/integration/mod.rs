@@ -291,3 +291,45 @@ fn simple_model_with_constructor() {
         ]
     );
 }
+
+#[test]
+fn simple_model_with_component_variables() {
+    let mut model = create_model("
+        define component Component {
+            var x;
+            var y;
+            
+            constructor(cx, cy) {
+                x = cx;
+                y = cy;
+            }
+
+            script {
+                _dump(x);
+                _dump(y);
+            }
+        }
+
+        component a = Component(1, 2);
+        component b = Component(3, 4);
+    ");
+
+    model.construct();
+    model.run(10, |_, _| {});
+
+    assert_eq!(
+        model.components[model.component_idx(&"a".to_string()).unwrap()].dumps,
+        vec![
+            se::Object::Integer(1),
+            se::Object::Integer(2),
+        ]
+    );
+
+    assert_eq!(
+        model.components[model.component_idx(&"b".to_string()).unwrap()].dumps,
+        vec![
+            se::Object::Integer(3),
+            se::Object::Integer(4),
+        ]
+    );
+}

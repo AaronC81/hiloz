@@ -42,8 +42,8 @@ pub enum Instruction {
     Duplicate,
     Dump,
     DefineLocal(String),
-    SetLocal(String),
-    GetLocal(String),
+    SetVariable(String),
+    GetVariable(String),
     GetParameter(usize),
     Return,
     Call,
@@ -129,8 +129,8 @@ pub enum InstructionExecutionResult {
     OkSuspend(SuspensionMode),
     OkNewFrame(InterpreterFrame),
     OkDefineLocal(String),
-    OkSetLocal { name: String, value: Object },
-    OkGetLocal(String),
+    OkSetVariable { name: String, value: Object },
+    OkGetVariable(String),
     OkGetParameter(usize),
     Err(String),
 }
@@ -185,15 +185,15 @@ impl InterpreterFrame {
             Instruction::DefineLocal(name) =>
                 InstructionExecutionResult::OkDefineLocal(name.clone()),
 
-            Instruction::SetLocal(name) => {
-                InstructionExecutionResult::OkSetLocal {
+            Instruction::SetVariable(name) => {
+                InstructionExecutionResult::OkSetVariable {
                     name: name.clone(),
                     value: self.stack.pop().expect("stack empty"),
                 }
             }
 
-            Instruction::GetLocal(name) =>
-                InstructionExecutionResult::OkGetLocal(name.clone()),
+            Instruction::GetVariable(name) =>
+                InstructionExecutionResult::OkGetVariable(name.clone()),
 
             Instruction::GetParameter(idx) =>
                 InstructionExecutionResult::OkGetParameter(idx),
@@ -410,6 +410,10 @@ impl Interpreter {
             .find(|frame| frame.locals.contains_key(name))
     }
 
+    pub fn defined_local(&mut self, name: &String) -> bool {
+        self.find_frame_defining_local(name).is_some()
+    }
+
     pub fn set_local(&mut self, name: &String, value: Object) {
         let frame = self.find_frame_defining_local(name).expect("local not defined");
         frame.locals.insert(name.clone(), value);
@@ -465,12 +469,35 @@ impl Interpreter {
                 self.define_local(&name);
                 FrameExecutionResult::Ok
             }
-            InstructionExecutionResult::OkSetLocal { name, value } => {
-                self.set_local(&name, value);
+            InstructionExecutionResult::OkSetVariable { name, value } => {
+                if self.defined_local(&name) {
+                    self.set_local(&name, value);
+                } else {
+                    let component_idx = state.current_component_idx.expect("not running in component");
+                    state.modify(ComponentStateModification {
+                        component_idx,
+                        description: ComponentStateModificationDescription::Variable {
+                            idx: state.components[component_idx]
+                                .definition
+                                .variable_idx(&name)
+                                .expect(&format!("no variable named {}", name)),
+                            value,
+                        }
+                    })
+                }
                 FrameExecutionResult::Ok
             },
-            InstructionExecutionResult::OkGetLocal(name) => {
-                let local_value = self.get_local(&name);
+            InstructionExecutionResult::OkGetVariable(name) => {
+                let local_value = if self.defined_local(&name) {
+                    self.get_local(&name)
+                } else {
+                    let component_idx = state.current_component_idx.expect("not running in component");
+                    let var_idx = state.components[component_idx]
+                        .definition
+                        .variable_idx(&name)
+                        .expect(&format!("no variable named {}", name));
+                    state.components[component_idx].variables[var_idx].value.clone()
+                };
                 self.current_frame().stack.push(local_value);
                 FrameExecutionResult::Ok
             },

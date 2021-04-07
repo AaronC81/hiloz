@@ -1,4 +1,4 @@
-use std::{collections::HashSet, process};
+use std::{collections::HashSet, env::var, process};
 
 use se::Instruction;
 
@@ -63,6 +63,11 @@ impl<'a> CompilationContext<'a> {
         self.parameter_idx(name).is_some()
     }
 
+    pub fn defined_component_variable(&mut self, name: &String) -> bool {
+        self.component_definition().variables.iter()
+            .any(|var_def| &var_def.name == name)
+    }
+
     pub fn parameter_idx(&self, name: &String) -> Option<usize> {
         self.parameters.iter().position(|x| x == name).or_else(||
             if let Some(p) = self.parent {
@@ -110,9 +115,10 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
         p::Node::Identifier(i) => {
             let pin_idx = context.component_definition().pin_idx(i);
             let local_defined = context.defined_local(i);
+            let component_variable_defined = context.defined_component_variable(i);
             let parameter_idx = context.parameter_idx(i);
 
-            if [pin_idx.is_some(), local_defined, parameter_idx.is_some()].iter()
+            if [pin_idx.is_some(), local_defined, component_variable_defined, parameter_idx.is_some()].iter()
                 .filter(|x| **x)
                 .count() > 1
             {
@@ -129,9 +135,9 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
                 Ok(vec![
                     se::Instruction::GetParameter(parameter_idx),
                 ])
-            } else if local_defined {
+            } else if local_defined || component_variable_defined {
                 Ok(vec![
-                    se::Instruction::GetLocal(i.clone()),
+                    se::Instruction::GetVariable(i.clone()),
                 ])
             } else {
                 Err(format!("nothing named {}", i))
@@ -182,7 +188,7 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
                     [
                         compile(&initial_value, context)?,
                         vec![
-                            se::Instruction::SetLocal(name.clone())
+                            se::Instruction::SetVariable(name.clone())
                         ]
                     ].concat()
                 } else {
@@ -192,14 +198,14 @@ fn compile(node: &p::Node, context: &mut CompilationContext) -> Result<Vec<se::I
         }
 
         p::Node::LocalVariableAssignment { name, value } => {
-            if !context.defined_local(name) {
-                return Err(format!("no defined local named {}", name))
+            if !context.defined_local(name) && !context.defined_component_variable(name) {
+                return Err(format!("no defined variable named {}", name))
             }
 
             Ok([
                 compile(&value, context)?,
                 vec![
-                    se::Instruction::SetLocal(name.clone())
+                    se::Instruction::SetVariable(name.clone())
                 ]
             ].concat())
         }

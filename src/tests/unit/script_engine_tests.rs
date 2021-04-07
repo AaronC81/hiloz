@@ -88,12 +88,12 @@ fn it_can_have_locals() {
 
             Instruction::Push(Object::Integer(3)),
             Instruction::Push(Object::Integer(5)),
-            Instruction::SetLocal("a".into()),
-            Instruction::SetLocal("b".into()),
+            Instruction::SetVariable("a".into()),
+            Instruction::SetVariable("b".into()),
 
-            Instruction::GetLocal("a".into()),
-            Instruction::GetLocal("a".into()),
-            Instruction::GetLocal("b".into()),
+            Instruction::GetVariable("a".into()),
+            Instruction::GetVariable("a".into()),
+            Instruction::GetVariable("b".into()),
 
             Instruction::Halt,
         ]
